@@ -600,8 +600,6 @@
 
          %}
 
-
-
 }
 
 // This is included inline because SwigMethods (SimpleITKPYTHON_wrap.cxx)
@@ -611,6 +609,7 @@
 %}
 // Numpy array conversion support
 %native(_GetByteArrayFromImage) PyObject *sitk_GetByteArrayFromImage( PyObject *self, PyObject *args );
+%native(_GetByteArrayViewFromImage) PyObject *sitk_GetByteArrayViewFromImage( PyObject *self, PyObject *args);
 %native(_SetImageFromArray) PyObject *sitk_SetImageFromArray( PyObject *self, PyObject *args );
 
 %pythoncode %{
@@ -734,7 +733,37 @@ def GetArrayFromImage(image):
     dtype = _get_numpy_dtype( image )
 
     arr = numpy.frombuffer(imageByteArray, dtype )
-    
+
+    shape = image.GetSize();
+    if image.GetNumberOfComponentsPerPixel() > 1:
+      shape = ( image.GetNumberOfComponentsPerPixel(), ) + shape
+
+    arr.shape = shape[::-1]
+
+    return arr
+
+def GetArrayViewFromImage(image, writable = False):
+    """Get a numpy array view from a SimpleITK Image with less copy operation."""
+
+    if not HAVE_NUMPY:
+        raise ImportError('Numpy not available.')
+
+    if writable:
+        print "P::Writable"
+        writableI = 1
+    else:
+        print "P::Read-Only"
+        writableI = 0
+
+    imageByteArray = _SimpleITKDataBridge._GetByteArrayViewFromImage(image, writableI)
+
+    pixelID = image.GetPixelIDValue()
+    assert pixelID != sitkUnknown, "An SimpleITK image of Unknow pixel type should now exists!"
+
+    dtype = _get_numpy_dtype( image )
+
+    arr = numpy.array(imageByteArray, copy = False)
+
     shape = image.GetSize();
     if image.GetNumberOfComponentsPerPixel() > 1:
       shape = ( image.GetNumberOfComponentsPerPixel(), ) + shape
