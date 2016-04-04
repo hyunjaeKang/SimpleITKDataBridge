@@ -81,6 +81,14 @@
 #include <sitkImageOperators.h>
 %}
 
+%{
+#define SWIG_FILE_WITH_INIT
+%}
+%include "numpy.i"
+%init %{
+import_array();
+%}
+
 // Language Specific Sections
 //#if SWIGCSHARP
 //%include CSharp.i
