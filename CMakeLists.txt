@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.2.2)
 project(SimpleITKDataBridge)
 
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic")
 
 include_directories ( ${PYTHON_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR} )
@@ -11,7 +12,7 @@ set(CMAKE_SWIG_OUTDIR ${CMAKE_CURRENT_BINARY_DIR})
 # SimpleITK
 find_package(SimpleITK REQUIRED)
 include(${SimpleITK_USE_FILE})
-INCLUDE_DIRECTORIES(${SimpleITK_INCLUDE_DIRS})
+include_directories(${SimpleITK_INCLUDE_DIRS})
 
 # SWIG
 find_package(SWIG REQUIRED)
@@ -20,10 +21,16 @@ set(CMAKE_SWIG_FLAGS "")
 
 # Python
 find_package(PythonLibs)
-INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_PATH})
+include_directories(${PYTHON_INCLUDE_PATH})
+
+#NumPy
+find_package(NumPy REQUIRED)
+message("NUMPY_INCLUDE_PATH::" ${NUMPY_INCLUDE_DIR})
+include_directories(${NUMPY_INCLUDE_DIR})
+
 
 # local files
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 #find_package ( PythonLibs REQUIRED )
 #find_package ( PythonInterp REQUIRED )
