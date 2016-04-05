@@ -87,26 +87,28 @@
         %pythoncode %{
 
         def __del__(self):
-            print "---ID::", id(self)
-            print "sitk::Image call __del__"
-            print "Delete sitk::Image"
+            #print "---ID::", id(self)
+            #print "sitk::Image call __del__"
+            #print "Delete sitk::Image"
             Tempnumpyarray = GetArrayFromImage(self)
-            bwritable = self.numpyarray.flags.writeable
-            self.numpyarray.data = Tempnumpyarray.data
-            self.numpyarray.setflags(write = bwritable)
+            for nparr in self.convertedndarraylist:
+                ref = sys.getrefcount(nparr)
+                if ref > 3:
+                    bwritable  = nparr.flags.writeable
+                    nparr.data = Tempnumpyarray.data
+                    nparr.setflags(write = bwritable)
 
         def __dealloc__(self): ### does not work with swig and python
-            print id(self)
-            print "sitk::Image call __dealloc__"
+            pass
+            #print id(self)
+            #print "sitk::Image call __dealloc__"
 
         def SetNumPyArray(self, numpyarray):
-            self.numpyarray = numpyarray
             try:
                 self.convertedndarraylist
             except:
                 self.convertedndarraylist = []
             self.convertedndarraylist.append(numpyarray)
-
 
         # mathematical operators
 
