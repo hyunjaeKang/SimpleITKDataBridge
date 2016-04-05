@@ -87,11 +87,26 @@
         %pythoncode %{
 
         def __del__(self):
+            print "---ID::", id(self)
             print "sitk::Image call __del__"
             print "Delete sitk::Image"
+            Tempnumpyarray = GetArrayFromImage(self)
+            bwritable = self.numpyarray.flags.writeable
+            self.numpyarray.data = Tempnumpyarray.data
+            self.numpyarray.setflags(write = bwritable)
 
         def __dealloc__(self): ### does not work with swig and python
+            print id(self)
             print "sitk::Image call __dealloc__"
+
+        def SetNumPyArray(self, numpyarray):
+            self.numpyarray = numpyarray
+            try:
+                self.convertedndarraylist
+            except:
+                self.convertedndarraylist = []
+            self.convertedndarraylist.append(numpyarray)
+
 
         # mathematical operators
 
@@ -742,35 +757,32 @@ def GetArrayFromImage(image):
 
     return arr
 
-def GetArrayViewFromImage(image, writable = False):
+def GetArrayViewFromImage(image, writeable = False):
     """Get a numpy array view from a SimpleITK Image with less copy operation."""
 
     if not HAVE_NUMPY:
         raise ImportError('Numpy not available.')
 
-    if writable:
-        print "P::Writable"
-        writableI = 1
-    else:
-        print "P::Read-Only"
-        writableI = 0
+    imageByteArray = _SimpleITKDataBridge._GetByteArrayViewFromImage(image)
 
-    imageByteArray = _SimpleITKDataBridge._GetByteArrayViewFromImage(image, writableI)
+    #pixelID = image.GetPixelIDValue()
+    #assert pixelID != sitkUnknown, "An SimpleITK image of Unknow pixel type should now exists!"
 
-    pixelID = image.GetPixelIDValue()
-    assert pixelID != sitkUnknown, "An SimpleITK image of Unknow pixel type should now exists!"
+    #dtype = _get_numpy_dtype( image )
 
-    dtype = _get_numpy_dtype( image )
-
-    arr = numpy.array(imageByteArray, copy = False)
+    #arr = numpy.array(imageByteArray, copy = False)
 
     shape = image.GetSize();
     if image.GetNumberOfComponentsPerPixel() > 1:
       shape = ( image.GetNumberOfComponentsPerPixel(), ) + shape
 
-    arr.shape = shape[::-1]
+    imageByteArray.shape = shape[::-1]
 
-    return arr
+    image.SetNumPyArray(imageByteArray)
+
+    imageByteArray.setflags(write = writeable)
+
+    return imageByteArray
 
 def GetImageFromArray( arr, isVector=False):
     """Get a SimpleITK Image from a numpy array. If isVector is True, then a 3D array will be treated as a 2D vector image, otherwise it will be treated as a 3D image"""
