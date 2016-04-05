@@ -184,22 +184,20 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   size_t pixelSize = 1;
 
   unsigned int dimension;
-  int bWritable = 0;
   int typenum = 0;
   npy_intp* shape = NULL;
 
   /* Cast over to a sitk Image. */
   PyObject * pyImage;
-  PyObject * pybWritable;
+
   void * voidImage;
   const sitk::Image * sitkImage;
   int res = 0;
-  if( !PyArg_ParseTuple( args, "O|i", &pyImage, &bWritable ) )
+  if( !PyArg_ParseTuple( args, "O", &pyImage) )
     {
     SWIG_fail; // SWIG_fail is a macro that says goto: fail (return NULL)
     }
 
-  std::cout << "bWritable::: " << bWritable << std::endl;
   res = SWIG_ConvertPtr( pyImage, &voidImage, SWIGTYPE_p_itk__simple__Image, 0 );
   if( !SWIG_IsOK( res ) )
     {
