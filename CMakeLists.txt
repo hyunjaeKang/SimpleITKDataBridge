@@ -39,10 +39,10 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 # Run swig
 set(CMAKE_SWIG_FLAGS ${CMAKE_SWIG_GLOBAL_FLAGS} -features autodoc=1 -keyword )
 
-set_source_files_properties ( SimpleITKDataBridge.i PROPERTIES CPLUSPLUS ON )
+set_source_files_properties ( SimpleITK.i PROPERTIES CPLUSPLUS ON )
 
-SWIG_add_module( SimpleITKDataBridge python SimpleITKDataBridge.i sitkPyCommand.cxx )
-SWIG_LINK_LIBRARIES(SimpleITKDataBridge ${PYTHON_LIBRARIES} ${SimpleITK_LIBRARIES})
+SWIG_add_module( SimpleITK python SimpleITK.i sitkPyCommand.cxx )
+SWIG_LINK_LIBRARIES(SimpleITK ${PYTHON_LIBRARIES} ${SimpleITK_LIBRARIES})
 
-#ADD_LIBRARY(SimpleITKDataBridge sitkPyCommand.cxx)
+#ADD_LIBRARY(SimpleITK sitkPyCommand.cxx)
 #LINK_LIBRARIES(SimpleITK ${PYTHON_LIBRARIES} ${PYADD_LIBRARY} ${ITK_LIBRARIES} ${SimpleITK_LIBRARIES})

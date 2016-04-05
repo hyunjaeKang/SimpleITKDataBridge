@@ -15,9 +15,7 @@
 *  limitations under the License.
 *
 *=========================================================================*/
-//%module(directors="1") SimpleITK
-// Change the name of this module for tests
-%module(directors="1") SimpleITKDataBridge
+%module(directors="1") SimpleITK
 
 // Remove some warnings
 #pragma SWIG nowarn=362,503,401,389,516,511

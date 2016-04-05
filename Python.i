@@ -740,7 +740,7 @@ def GetArrayFromImage(image):
     if not HAVE_NUMPY:
         raise ImportError('Numpy not available.')
 
-    imageByteArray = _SimpleITKDataBridge._GetByteArrayFromImage(image)
+    imageByteArray = _SimpleITK._GetByteArrayFromImage(image)
 
     pixelID = image.GetPixelIDValue()
     assert pixelID != sitkUnknown, "An SimpleITK image of Unknow pixel type should now exists!"
@@ -763,7 +763,7 @@ def GetArrayViewFromImage(image, writeable = False):
     if not HAVE_NUMPY:
         raise ImportError('Numpy not available.')
 
-    imageByteArray = _SimpleITKDataBridge._GetByteArrayViewFromImage(image)
+    imageByteArray = _SimpleITK._GetByteArrayViewFromImage(image)
 
     #pixelID = image.GetPixelIDValue()
     #assert pixelID != sitkUnknown, "An SimpleITK image of Unknow pixel type should now exists!"
@@ -802,7 +802,7 @@ def GetImageFromArray( arr, isVector=False):
       id = _get_sitk_pixelid( z )
       img = Image( z.shape[::-1], id )
 
-    _SimpleITKDataBridge._SetImageFromArray( z.tostring(), img )
+    _SimpleITK._SetImageFromArray( z.tostring(), img )
 
     return img
 %}
