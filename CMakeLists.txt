@@ -25,7 +25,6 @@ include_directories(${PYTHON_INCLUDE_PATH})
 
 #NumPy
 find_package(NumPy REQUIRED)
-message("NUMPY_INCLUDE_PATH::" ${NUMPY_INCLUDE_DIR})
 include_directories(${NUMPY_INCLUDE_DIR})
 
 
