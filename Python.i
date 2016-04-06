@@ -91,12 +91,15 @@
             #print "sitk::Image call __del__"
             #print "Delete sitk::Image"
             Tempnumpyarray = GetArrayFromImage(self)
-            for nparr in self.convertedndarraylist:
-                ref = sys.getrefcount(nparr)
-                if ref > 3:
-                    bwritable  = nparr.flags.writeable
-                    nparr.data = Tempnumpyarray.data
-                    nparr.setflags(write = bwritable)
+            try:
+                for nparr in self.convertedndarraylist:
+                    ref = sys.getrefcount(nparr)
+                    if ref > 3:
+                        bwritable  = nparr.flags.writeable
+                        nparr.data = Tempnumpyarray.data
+                        nparr.setflags(write = bwritable)
+            except:
+                pass
 
         def __dealloc__(self): ### does not work with swig and python
             pass
@@ -629,6 +632,7 @@
 %native(_GetByteArrayViewFromImage) PyObject *sitk_GetByteArrayViewFromImage( PyObject *self, PyObject *args);
 %native(_SetImageFromArray) PyObject *sitk_SetImageFromArray( PyObject *self, PyObject *args );
 %native(_SetImageViewFromArray) PyObject *sitk_SetImageViewFromArray( PyObject *self, PyObject *args );
+
 
 %pythoncode %{
 
