@@ -628,6 +628,7 @@
 %native(_GetByteArrayFromImage) PyObject *sitk_GetByteArrayFromImage( PyObject *self, PyObject *args );
 %native(_GetByteArrayViewFromImage) PyObject *sitk_GetByteArrayViewFromImage( PyObject *self, PyObject *args);
 %native(_SetImageFromArray) PyObject *sitk_SetImageFromArray( PyObject *self, PyObject *args );
+%native(_SetImageViewFromArray) PyObject *sitk_SetImageFromArray( PyObject *self, PyObject *args );
 
 %pythoncode %{
 
@@ -787,6 +788,28 @@ def GetArrayViewFromImage(image, writeable = False):
     return imageByteArray
 
 def GetImageFromArray( arr, isVector=False):
+    """Get a SimpleITK Image from a numpy array. If isVector is True, then a 3D array will be treated as a 2D vector image, otherwise it will be treated as a 3D image"""
+
+    if not HAVE_NUMPY:
+        raise ImportError('Numpy not available.')
+
+    z = numpy.asarray( arr )
+
+    assert z.ndim in ( 2, 3, 4 ), \
+      "Only arrays of 2, 3 or 4 dimensions are supported."
+
+    if ( z.ndim == 3 and isVector ) or (z.ndim == 4):
+      id = _get_sitk_vector_pixelid( z )
+      img = Image( z.shape[-2::-1] , id, z.shape[-1] )
+    elif z.ndim in ( 2, 3 ):
+      id = _get_sitk_pixelid( z )
+      img = Image( z.shape[::-1], id )
+
+    _SimpleITK._SetImageFromArray( z.tostring(), img )
+
+    return img
+
+def GetImageViewFromArray( arr, isVector=False):
     """Get a SimpleITK Image from a numpy array. If isVector is True, then a 3D array will be treated as a 2D vector image, otherwise it will be treated as a 3D image"""
 
     if not HAVE_NUMPY:
