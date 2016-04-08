@@ -20,13 +20,13 @@
 #include <numeric>
 #include <functional>
 
+#include "SimpleITK.h"
 #include "sitkImage.h"
 #include "sitkConditional.h"
 #include "sitkExceptionObject.h"
+#include "itkImportImageFilter.h"
 
 namespace sitk = itk::simple;
-
-//#include <numpy/arrayobject.h>
 
 // Python is written in C
 #ifdef __cplusplus
@@ -184,6 +184,8 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   size_t pixelSize = 1;
 
   unsigned int dimension;
+  int bWritable = 0;
+
   int typenum = 0;
   npy_intp* shape = NULL;
 
@@ -193,7 +195,8 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   void * voidImage;
   const sitk::Image * sitkImage;
   int res = 0;
-  if( !PyArg_ParseTuple( args, "O", &pyImage) )
+  //if( !PyArg_ParseTuple( args, "O", &pyImage) )
+  if( !PyArg_ParseTuple( args, "O|i", &pyImage, &bWritable ) )
     {
     SWIG_fail; // SWIG_fail is a macro that says goto: fail (return NULL)
     }
@@ -313,19 +316,20 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
     shape[idx] = size[idx];
     }
 
-  byteArray = PyArray_SimpleNewFromData(dimension, shape, typenum, (void*)sitkBufferPtr);
+  //byteArray = PyArray_SimpleNewFromData(dimension, shape, typenum, (void*)sitkBufferPtr);
 
+  //byteArray = PyBuffer_FromReadWriteMemory((void*)sitkBufferPtr, len);
 ////memcpy( arrayView, sitkBufferPtr, len );
-//  if(bWritable)
-//    {
-//    std::cout << "SWIG:Read-Write" << std::endl;
-//    byteArray = PyBuffer_FromReadWriteMemory((void*)sitkBufferPtr, len);
-//    }
-//  else
-//    {
-//    std::cout << "SWIG:Read-Only" << std::endl;
-//    byteArray = PyBuffer_FromMemory((void*)sitkBufferPtr, len);
-//    }
+  if(bWritable)
+    {
+    std::cout << "SWIG:Read-Write" << std::endl;
+    byteArray = PyBuffer_FromReadWriteMemory((void*)sitkBufferPtr, len);
+    }
+  else
+    {
+    std::cout << "SWIG:Read-Only" << std::endl;
+    byteArray = PyBuffer_FromMemory((void*)sitkBufferPtr, len);
+    }
 
   delete [] shape;
   return byteArray;
@@ -510,32 +514,81 @@ fail:
   return NULL;
 }
 
-/** An internal function that performs a deep copy of the image buffer
- * into a python byte array. The byte array can later be converted
- * into a numpy array with the frombuffer method.
+/** An internal function that converts a python byte array
+ * into a the image buffer with less copy operations.
+ * The conversion is based on itk::ImportImageFilter.
  */
 static PyObject*
 sitk_SetImageViewFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
 {
+//  PyArrayObject* NPArray = NULL;
+//  PyObject *     pyImage = NULL;
+//  void * sitkBufferPtr   = NULL;  ///
+//  size_t pixelSize = 1;
+
+
+//  const void*    ndarraybuffer;
+//  sitk::Image *  sitkImage = NULL;
+
+//  unsigned int   dimension;
+//  Py_ssize_t     ndarraybuffer_len;
+
+//  if (!PyArg_ParseTuple( args, "O", &NPArray, &pyImage ) )
+//    {
+//    PyErr_Clear();
+//    return NULL;
+//    }
+//  else
+//    {
+//    ndarraybuffer     = PyArray_DATA(NPArray);
+//    ndarraybuffer_len = PyArray_NBYTES(NPArray);
+//    }
+
+//  /* Cast over to a sitk Image. */
+//  {
+//    void * voidImage;
+//    int res = 0;
+//    res = SWIG_ConvertPtr( pyImage, &voidImage, SWIGTYPE_p_itk__simple__Image, 0 );
+//    if( !SWIG_IsOK( res ) )
+//      {
+//      SWIG_exception_fail(SWIG_ArgError(res), "in method 'SetImageFromArray', argument needs to be of type 'sitk::Image *'");
+//      }
+//    sitkImage = reinterpret_cast< sitk::Image * >( voidImage );
+//  }
+
+
+//  typedef itk::ImportImageFilter <sitkImage->GetPixel, dimension>  ImportImageFilterType;
+//  typedef itk::Image<sitkImage->GetPixelIDValue(), dimension>  ITKImageType;
+
+
+
+  ////////////////////////////////////////////////////////
   PyObject * pyImage = NULL;
+  PyArrayObject* NPArray = NULL;
+
+  std::vector<uint32_t> idx1 = {0,0};
+  std::vector<uint32_t> idx2 = {0,1};
+  std::vector<uint32_t> idx3 = {0,2};
 
   const void *buffer;
+  //void *buffer;
   Py_ssize_t buffer_len;
   Py_buffer  pyBuffer;
   memset(&pyBuffer, 0, sizeof(Py_buffer));
 
-  const sitk::Image * sitkImage = NULL;
+  sitk::Image * sitkImage = NULL;
   void * sitkBufferPtr = NULL;
   size_t pixelSize = 1;
 
   unsigned int dimension = 0;
   std::vector< unsigned int > size;
   size_t len = 1;
-
+  std::cout << "***** sitk_SetImageViewFromArray 0 *****" << std::endl;
   // We wish to support both the new PEP3118 buffer interface and the
   // older. So we first try to parse the arguments with the new buffer
   // protocol, then the old.
-  if (!PyArg_ParseTuple( args, "s*O", &pyBuffer, &pyImage ) )
+  //KHJ if (!PyArg_ParseTuple( args, "s*O", &pyBuffer, &pyImage ) )
+  if (!PyArg_ParseTuple( args, "OO", &NPArray, &pyImage ) )
     {
     PyErr_Clear();
     std::cout << "***** DebugPoint 0 *****" << std::endl;
@@ -557,15 +610,22 @@ sitk_SetImageViewFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
     }
   else
     {
-    if ( PyBuffer_IsContiguous( &pyBuffer, 'C' ) != 1 )
-      {
-      std::cout << "***** DebugPoint 3 *****" << std::endl;
-      PyBuffer_Release( &pyBuffer );
-      PyErr_SetString( PyExc_TypeError, "A C Contiguous buffer object is required." );
-      return NULL;
-      }
-    buffer_len = pyBuffer.len;
-    buffer = pyBuffer.buf;
+//    if ( PyBuffer_IsContiguous( &pyBuffer, 'C' ) != 1 )
+//      {
+//      std::cout << "***** DebugPoint 3 *****" << std::endl;
+//      PyBuffer_Release( &pyBuffer );
+//      PyErr_SetString( PyExc_TypeError, "A C Contiguous buffer object is required." );
+//      return NULL;
+//      }
+//    buffer_len = pyBuffer.len;
+//    buffer = pyBuffer.buf;
+
+      buffer = PyArray_DATA(NPArray);
+      //buffer = PyArray_BYTES(NPArray);
+      std::cout << "buffer::" << buffer << std::endl;
+      buffer_len = PyArray_NBYTES(NPArray);
+      std::cout << "buffer_len::" << buffer_len << std::endl;
+      std::cout << "PyArray_STRIDES(NPArray)::" << PyArray_STRIDES(NPArray) << std::endl;
     }
 
   /* Cast over to a sitk Image. */
@@ -575,7 +635,7 @@ sitk_SetImageViewFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
     res = SWIG_ConvertPtr( pyImage, &voidImage, SWIGTYPE_p_itk__simple__Image, 0 );
     if( !SWIG_IsOK( res ) )
       {
-      SWIG_exception_fail(SWIG_ArgError(res), "in method 'SetImageFromArray', argument needs to be of type 'sitk::Image *'");
+      //SWIG_exception_fail(SWIG_ArgError(res), "in method 'SetImageFromArray', argument needs to be of type 'sitk::Image *'");
       }
     sitkImage = reinterpret_cast< sitk::Image * >( voidImage );
   }
@@ -586,7 +646,7 @@ sitk_SetImageViewFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
       {
       case sitk::sitkUnknown:
         PyErr_SetString( PyExc_RuntimeError, "Unknown pixel type." );
-        goto fail;
+          return NULL;//goto fail;
         break;
       case sitk::ConditionalValue< sitk::sitkVectorUInt8 != sitk::sitkUnknown, sitk::sitkVectorUInt8, -14 >::Value:
       case sitk::ConditionalValue< sitk::sitkUInt8 != sitk::sitkUnknown, sitk::sitkUInt8, -2 >::Value:
@@ -641,11 +701,11 @@ sitk_SetImageViewFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
       case sitk::ConditionalValue< sitk::sitkComplexFloat32 != sitk::sitkUnknown, sitk::sitkComplexFloat32, -12 >::Value:
       case sitk::ConditionalValue< sitk::sitkComplexFloat64 != sitk::sitkUnknown, sitk::sitkComplexFloat64, -13 >::Value:
         PyErr_SetString( PyExc_RuntimeError, "Images of Complex Pixel types currently are not supported." );
-        goto fail;
+        return NULL;//goto fail;
         break;
       default:
         PyErr_SetString( PyExc_RuntimeError, "Unknown pixel type." );
-        goto fail;
+        return NULL;//goto fail;
       }
     }
   catch( const std::exception &e )
@@ -653,12 +713,13 @@ sitk_SetImageViewFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
     std::string msg = "Exception thrown in SimpleITK new Image: ";
     msg += e.what();
     PyErr_SetString( PyExc_RuntimeError, msg.c_str() );
-    goto fail;
+    return NULL;//goto fail;
     }
 
-
+  std::cout << "***** DebugPoint 4 *****" << std::endl;
   dimension = sitkImage->GetDimension();
   size = sitkImage->GetSize();
+
 
   // if the image is a vector just treat is as another dimension
   if ( sitkImage->GetNumberOfComponentsPerPixel() > 1 )
@@ -666,26 +727,105 @@ sitk_SetImageViewFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
     size.push_back( sitkImage->GetNumberOfComponentsPerPixel() );
     }
 
+  std::cout << "***** DebugPoint 5 *****" << std::endl;
   len = std::accumulate( size.begin(), size.end(), size_t(1), std::multiplies<size_t>() );
   len *= pixelSize;
 
   if ( buffer_len != len )
     {
     PyErr_SetString( PyExc_RuntimeError, "Size mismatch of image and Buffer." );
-    goto fail;
+    return NULL;//goto fail;
     }
 
-  memcpy( (void *)sitkBufferPtr, buffer, len );
+  //sitkBufferPtr = (void*)buffer;
 
+  //double* DsitkBufferPtr = (double*)sitkBufferPtr;
+  //double* Dbuffer = (double*)buffer;
+  std::cout << "DsitkBufferPtr[0]::" << ((double*)sitkBufferPtr)[0] << std::endl;
+  std::cout << "DsitkBufferPtr[1]::" << ((double*)sitkBufferPtr)[1] << std::endl;
+  std::cout << "DsitkBufferPtr[2]::" << ((double*)sitkBufferPtr)[2] << std::endl;
+  std::cout << "Dbuffer[0]::" << ((double*)buffer)[0] << std::endl;
+  std::cout << "Dbuffer[1]::" << ((double*)buffer)[1] << std::endl;
+  std::cout << "Dbuffer[2]::" << ((double*)buffer)[2] << std::endl;
+  //memcpy( (void *)sitkBufferPtr, buffer, len );
 
-  PyBuffer_Release( &pyBuffer );
+  std::cout << "sitkBufferPtr:::" << sitkBufferPtr << std::endl;
+  std::cout << "buffer:::" << buffer << std::endl;
+  //PyBuffer_Release( &pyBuffer );
+
+  //sitkImage->MakeUnique();
+
+//  *sitkImage  =  sitk::ImportAsDouble((double*)buffer,
+//                                      sitkImage->GetSize(),
+//                                      sitkImage->GetSpacing(),
+//                                      sitkImage->GetOrigin(),
+//                                      sitkImage->GetDirection());
+
+//   itk::Image<double, 2>::RegionType region;
+//   itk::Image<double, 2>::SizeType   size = sitkSTLVectorToITK< itk::Image<double, 2>::SizeType>( sitkImage->GetSize() );
+//   region.SetSize(size);
+//   itkimg->SetRegions( region );
+
+  typedef itk::ImportImageFilter <double, 2>  ImportImageFilterType;
+  typedef itk::Image<double, 2>  ITKImageType;
+  typename ITKImageType::SizeType sizeitk;
+  typename ITKImageType::IndexType startitk;
+  startitk.Fill( 0 );
+  //sizeitk = itk::simple::sitkSTLVectorToITK< itk::Image<double, 2>::SizeType>( sitkImage->GetSize() );
+  sizeitk[0]=5;
+  sizeitk[1]=3;
+  typename ITKImageType::SizeValueType numberOfPixels = 15;
+//  for( unsigned int dim = 0; dim < dimension; ++dim )
+//    {
+//    sizeitk[dimension - dim - 1] = NPArray->dimensions[dim];
+//    numberOfPixels *= NPArray->dimensions[dim];
+//    }
+
+  typename ITKImageType::RegionType regionitk;
+  regionitk.SetIndex( startitk );
+  regionitk.SetSize( sizeitk );
+
+  typename ITKImageType::PointType originitk;
+  originitk.Fill( 0.0 );
+
+  typename ITKImageType::SpacingType spacingitk;
+  spacingitk.Fill( 1.0 );
+
+  typename ImportImageFilterType::Pointer importer = ImportImageFilterType::New();
+  importer->SetRegion( regionitk );
+  importer->SetOrigin( originitk );
+  importer->SetSpacing( spacingitk );
+  const bool importImageFilterWillOwnTheBuffer = false;
+
+  double * data = (double *)buffer;
+
+  importer->SetImportPointer( data,
+                              numberOfPixels,
+                              importImageFilterWillOwnTheBuffer );
+
+  importer->Update();
+  typename ITKImageType::Pointer output = importer->GetOutput();
+  output->DisconnectPipeline();
+
+  *sitkImage  = sitk::Image(output);
+
+  std::cout << "***** DebugPoint 6 *****" << std::endl;
+  std::cout << sitkImage->GetPixelAsDouble( idx1 ) << std::endl;
+  std::cout << sitkImage->GetPixelAsDouble( idx2 ) << std::endl;
+  std::cout << sitkImage->GetPixelAsDouble( idx3 ) << std::endl;
+
+  //Py_INCREF(NPArray);
   Py_RETURN_NONE;
+  //return (PyObject*)NPArray;
 
 fail:
-  PyBuffer_Release( &pyBuffer );
+  //PyBuffer_Release( &pyBuffer );
   return NULL;
 }
 
 #ifdef __cplusplus
 } // end extern "C"
+
+
+
 #endif

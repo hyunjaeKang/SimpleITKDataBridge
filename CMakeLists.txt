@@ -19,6 +19,11 @@ find_package(SWIG REQUIRED)
 include(${SWIG_USE_FILE})
 set(CMAKE_SWIG_FLAGS "")
 
+#ITK
+find_package(ITK REQUIRED)
+include_directories(${ITK_INCLUDE_DIRS})
+
+
 # Python
 find_package(PythonLibs)
 include_directories(${PYTHON_INCLUDE_PATH})
@@ -41,7 +46,7 @@ set(CMAKE_SWIG_FLAGS ${CMAKE_SWIG_GLOBAL_FLAGS} -features autodoc=1 -keyword )
 set_source_files_properties ( SimpleITK.i PROPERTIES CPLUSPLUS ON )
 
 SWIG_add_module( SimpleITK python SimpleITK.i sitkPyCommand.cxx )
-SWIG_LINK_LIBRARIES(SimpleITK ${PYTHON_LIBRARIES} ${SimpleITK_LIBRARIES})
+SWIG_LINK_LIBRARIES(SimpleITK ${PYTHON_LIBRARIES} ${SimpleITK_LIBRARIES} ${ITK_LIBRARIES})
 
 #ADD_LIBRARY(SimpleITK sitkPyCommand.cxx)
 #LINK_LIBRARIES(SimpleITK ${PYTHON_LIBRARIES} ${PYADD_LIBRARY} ${ITK_LIBRARIES} ${SimpleITK_LIBRARIES})

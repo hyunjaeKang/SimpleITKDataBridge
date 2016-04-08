@@ -770,26 +770,37 @@ def GetArrayViewFromImage(image, writeable = False):
     if not HAVE_NUMPY:
         raise ImportError('Numpy not available.')
 
-    imageByteArray = _SimpleITK._GetByteArrayViewFromImage(image)
+    if writeable:
+        writeableI = 1
+    else:
+        writeableI = 0
 
-    #pixelID = image.GetPixelIDValue()
-    #assert pixelID != sitkUnknown, "An SimpleITK image of Unknow pixel type should now exists!"
+    imageByteArray = _SimpleITK._GetByteArrayViewFromImage(image, writeableI)
 
-    #dtype = _get_numpy_dtype( image )
+    pixelID = image.GetPixelIDValue()
+    assert pixelID != sitkUnknown, "An SimpleITK image of Unknow pixel type should now exists!"
 
-    #arr = numpy.array(imageByteArray, copy = False)
+    dtype = _get_numpy_dtype( image )
+
+    arr = numpy.array(imageByteArray, copy = False)
 
     shape = image.GetSize();
     if image.GetNumberOfComponentsPerPixel() > 1:
       shape = ( image.GetNumberOfComponentsPerPixel(), ) + shape
 
-    imageByteArray.shape = shape[::-1]
+    #imageByteArray.shape = shape[::-1]
+    #image.SetNumPyArray(imageByteArray)
+    #imageByteArray.setflags(write = writeable)
+    #arr.shape = shape[::-1]
+    #image.SetNumPyArray(arr)
+    #arr.setflags(write = writeable)
+    #return imageByteArray
 
-    image.SetNumPyArray(imageByteArray)
+    arr = numpy.array(imageByteArray, copy = False).view(dtype = dtype).reshape(shape[::-1])
 
-    imageByteArray.setflags(write = writeable)
+    image.SetNumPyArray(arr)
 
-    return imageByteArray
+    return arr
 
 def GetImageFromArray( arr, isVector=False):
     """Get a SimpleITK Image from a numpy array. If isVector is True, then a 3D array will be treated as a 2D vector image, otherwise it will be treated as a 3D image"""
@@ -816,24 +827,29 @@ def GetImageFromArray( arr, isVector=False):
 def GetImageViewFromArray( arr, isVector=False):
     """Get a SimpleITK Image from a numpy array. If isVector is True, then a 3D array will be treated as a 2D vector image, otherwise it will be treated as a 3D image"""
 
+    print "Debug 01"
     if not HAVE_NUMPY:
         raise ImportError('Numpy not available.')
 
-    #z = numpy.asarray( arr )
+    z = numpy.asarray( arr )
 
     assert arr.ndim in ( 2, 3, 4 ), \
       "Only arrays of 2, 3 or 4 dimensions are supported."
-
+    print "Debug 02"
     if ( arr.ndim == 3 and isVector ) or (arr.ndim == 4):
       id = _get_sitk_vector_pixelid( arr )
       img = Image( arr.shape[-2::-1] , id, arr.shape[-1] )
     elif arr.ndim in ( 2, 3 ):
-      id = _get_sitk_pixelid( z )
+      id = _get_sitk_pixelid( arr )
       img = Image( arr.shape[::-1], id )
-
+    print "Debug 03"
     #_SimpleITK._SetImageFromArray( z.tostring(), img )
     _SimpleITK._SetImageViewFromArray( arr, img )
-
+    #_SimpleITK._SetImageViewFromArray( arr.tostring(), img )
+    #print RefNum
+    #print type(RefNum)
+    print "Debug 04"
+    #img.SetNumPyArray(RefNum)
     return img
 %}
 
