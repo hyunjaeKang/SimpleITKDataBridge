@@ -565,6 +565,14 @@ sitk_SetImageViewFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
   ////////////////////////////////////////////////////////
   PyObject * pyImage = NULL;
   PyArrayObject* NPArray = NULL;
+  void * voidImage;
+
+  int r;
+  int mindex = 0;
+  bool checkMem = true;
+
+  int* p_a;
+  int* p_b;
 
   std::vector<uint32_t> idx1 = {0,0};
   std::vector<uint32_t> idx2 = {0,1};
@@ -574,6 +582,7 @@ sitk_SetImageViewFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
   //void *buffer;
   Py_ssize_t buffer_len;
   Py_buffer  pyBuffer;
+  Py_buffer  pyBufferPyImage;
   memset(&pyBuffer, 0, sizeof(Py_buffer));
 
   sitk::Image * sitkImage = NULL;
@@ -630,7 +639,7 @@ sitk_SetImageViewFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
 
   /* Cast over to a sitk Image. */
   {
-    void * voidImage;
+    //void * voidImage;
     int res = 0;
     res = SWIG_ConvertPtr( pyImage, &voidImage, SWIGTYPE_p_itk__simple__Image, 0 );
     if( !SWIG_IsOK( res ) )
@@ -720,6 +729,41 @@ sitk_SetImageViewFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
   dimension = sitkImage->GetDimension();
   size = sitkImage->GetSize();
 
+
+  ///////////////// Buffer check
+  r= PyObject_CheckBuffer(pyImage);
+  std::cout << "****** Result value ::" << r << std::endl;
+  r= PyObject_GetBuffer(pyImage, &pyBufferPyImage, PyBUF_SIMPLE);
+  std::cout << "****** Result value ::" << r << std::endl;
+  //sitkImage = reinterpret_cast< sitk::Image * >( voidImage );
+  std::cout << "#####****** pyImage::" << pyImage << std::endl;
+  std::cout << "****** voidImage::" << voidImage << std::endl;
+  std::cout << "****** sitkImage::" << sitkImage << std::endl;
+  std::cout << "#####****** &sitkBufferPtr::" << &sitkBufferPtr << std::endl;
+  //std::cout << "****** pyImage->buf::" << pyImage->buf << std::endl;
+  std::cout << "****** pyBufferPyImage.buf::" << pyBufferPyImage.buf << std::endl;
+
+  mindex = 0;
+  checkMem = true;
+
+  //mindex = (void*)pyImage - (void*)sitkBufferPtr;
+  p_a = (int*)sitkImage;
+  p_b = (int*)sitkBufferPtr;
+  mindex = p_b -p_a;
+  std::cout << "mindex:::" << mindex << std::endl;
+  std::cout << "pyImage:::" << pyImage+mindex << std::endl;
+//  while(checkMem)
+//  {
+//    if (&pyImage[mindex] ==  sitkBufferPtr)
+//    {
+//      checkMem = false;
+//      }
+
+//    ++mindex;
+//  }
+
+  std::cout << "mindex::" << mindex << std::endl;
+  ////////////////
 
   // if the image is a vector just treat is as another dimension
   if ( sitkImage->GetNumberOfComponentsPerPixel() > 1 )
