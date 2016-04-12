@@ -770,33 +770,22 @@ def GetArrayViewFromImage(image, writeable = False):
     if not HAVE_NUMPY:
         raise ImportError('Numpy not available.')
 
-    if writeable:
-        writeableI = 1
-    else:
-        writeableI = 0
 
-    imageByteArray = _SimpleITK._GetByteArrayViewFromImage(image, writeableI)
+    imageByteArrayView = _SimpleITK._GetByteArrayViewFromImage(image)
 
     pixelID = image.GetPixelIDValue()
     assert pixelID != sitkUnknown, "An SimpleITK image of Unknow pixel type should now exists!"
 
     dtype = _get_numpy_dtype( image )
 
-    arr = numpy.array(imageByteArray, copy = False)
-
     shape = image.GetSize();
     if image.GetNumberOfComponentsPerPixel() > 1:
       shape = ( image.GetNumberOfComponentsPerPixel(), ) + shape
 
-    #imageByteArray.shape = shape[::-1]
-    #image.SetNumPyArray(imageByteArray)
-    #imageByteArray.setflags(write = writeable)
-    #arr.shape = shape[::-1]
-    #image.SetNumPyArray(arr)
-    #arr.setflags(write = writeable)
-    #return imageByteArray
+    arr = numpy.asarray(imageByteArrayView).view(dtype = dtype).reshape(shape[::-1])
 
-    arr = numpy.array(imageByteArray, copy = False).view(dtype = dtype).reshape(shape[::-1])
+    if not writeable:
+      arr.setflags(write = writeable)
 
     image.SetNumPyArray(arr)
 

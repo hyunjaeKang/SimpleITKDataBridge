@@ -177,6 +177,7 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
 {
   // Holds the bulk data
   PyObject * byteArray = NULL;
+  Py_buffer pybuffer;
 
   const void * sitkBufferPtr;
   Py_ssize_t len;
@@ -184,10 +185,8 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   size_t pixelSize = 1;
 
   unsigned int dimension;
-  int bWritable = 0;
 
   int typenum = 0;
-  npy_intp* shape = NULL;
 
   /* Cast over to a sitk Image. */
   PyObject * pyImage;
@@ -195,8 +194,9 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   void * voidImage;
   const sitk::Image * sitkImage;
   int res = 0;
-  //if( !PyArg_ParseTuple( args, "O", &pyImage) )
-  if( !PyArg_ParseTuple( args, "O|i", &pyImage, &bWritable ) )
+
+
+  if( !PyArg_ParseTuple( args, "O", &pyImage) )
     {
     SWIG_fail; // SWIG_fail is a macro that says goto: fail (return NULL)
     }
@@ -218,61 +218,51 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   case sitk::ConditionalValue< sitk::sitkUInt8 != sitk::sitkUnknown, sitk::sitkUInt8, -2 >::Value:
     sitkBufferPtr = (const void *)sitkImage->GetBufferAsUInt8();
     pixelSize  = sizeof( uint8_t );
-    typenum = NPY_UINT8;
     break;
   case sitk::ConditionalValue< sitk::sitkVectorInt8 != sitk::sitkUnknown, sitk::sitkVectorInt8, -15 >::Value:
   case sitk::ConditionalValue< sitk::sitkInt8 != sitk::sitkUnknown, sitk::sitkInt8, -3 >::Value:
     sitkBufferPtr = (const void *)sitkImage->GetBufferAsInt8();
     pixelSize  = sizeof( int8_t );
-    typenum = NPY_INT8;
     break;
   case sitk::ConditionalValue< sitk::sitkVectorUInt16 != sitk::sitkUnknown, sitk::sitkVectorUInt16, -16 >::Value:
   case sitk::ConditionalValue< sitk::sitkUInt16 != sitk::sitkUnknown, sitk::sitkUInt16, -4 >::Value:
     sitkBufferPtr = (const void *)sitkImage->GetBufferAsUInt16();
     pixelSize  = sizeof( uint16_t );
-    typenum = NPY_UINT16;
     break;
   case sitk::ConditionalValue< sitk::sitkVectorInt16 != sitk::sitkUnknown, sitk::sitkVectorInt16, -17 >::Value:
   case sitk::ConditionalValue< sitk::sitkInt16 != sitk::sitkUnknown, sitk::sitkInt16, -5 >::Value:
     sitkBufferPtr = (const void *)sitkImage->GetBufferAsInt16();
     pixelSize  = sizeof( int16_t );
-    typenum = NPY_INT16;
     break;
   case sitk::ConditionalValue< sitk::sitkVectorUInt32 != sitk::sitkUnknown, sitk::sitkVectorUInt32, -18 >::Value:
   case sitk::ConditionalValue< sitk::sitkUInt32 != sitk::sitkUnknown, sitk::sitkUInt32, -6 >::Value:
     sitkBufferPtr = (const void *)sitkImage->GetBufferAsUInt32();
     pixelSize  = sizeof( uint32_t );
-    typenum = NPY_UINT32;
     break;
   case sitk::ConditionalValue< sitk::sitkVectorInt32 != sitk::sitkUnknown, sitk::sitkVectorInt32, -19 >::Value:
   case sitk::ConditionalValue< sitk::sitkInt32 != sitk::sitkUnknown, sitk::sitkInt32, -7 >::Value:
     sitkBufferPtr = (const void *)sitkImage->GetBufferAsInt32();
     pixelSize  = sizeof( int32_t );
-    typenum = NPY_INT32;
     break;
   case sitk::ConditionalValue< sitk::sitkVectorUInt64 != sitk::sitkUnknown, sitk::sitkVectorUInt64, -20 >::Value:
   case sitk::ConditionalValue< sitk::sitkUInt64 != sitk::sitkUnknown, sitk::sitkUInt64, -8 >::Value:
     sitkBufferPtr = (const void *)sitkImage->GetBufferAsUInt64();
     pixelSize  = sizeof( uint64_t );
-    typenum = NPY_UINT64;
     break;
   case sitk::ConditionalValue< sitk::sitkVectorInt64 != sitk::sitkUnknown, sitk::sitkVectorInt64, -21 >::Value:
   case sitk::ConditionalValue< sitk::sitkInt64 != sitk::sitkUnknown, sitk::sitkInt64, -9 >::Value:
      sitkBufferPtr = (const void *)sitkImage->GetBufferAsInt64();
      pixelSize  = sizeof( int64_t );
-     typenum = NPY_INT64;
      break;
   case sitk::ConditionalValue< sitk::sitkVectorFloat32 != sitk::sitkUnknown, sitk::sitkVectorFloat32, -22 >::Value:
   case sitk::ConditionalValue< sitk::sitkFloat32 != sitk::sitkUnknown, sitk::sitkFloat32, -10 >::Value:
     sitkBufferPtr = (const void *)sitkImage->GetBufferAsFloat();
     pixelSize  = sizeof( float );
-    typenum = NPY_FLOAT;
     break;
   case sitk::ConditionalValue< sitk::sitkVectorFloat64 != sitk::sitkUnknown, sitk::sitkVectorFloat64, -23 >::Value:
   case sitk::ConditionalValue< sitk::sitkFloat64 != sitk::sitkUnknown, sitk::sitkFloat64, -11 >::Value:
     sitkBufferPtr = (const void *)sitkImage->GetBufferAsDouble(); // \todo rename to Float64 for consistency
     pixelSize  = sizeof( double );
-    typenum = NPY_DOUBLE;
     break;
   case sitk::ConditionalValue< sitk::sitkComplexFloat32 != sitk::sitkUnknown, sitk::sitkComplexFloat32, -12 >::Value:
   case sitk::ConditionalValue< sitk::sitkComplexFloat64 != sitk::sitkUnknown, sitk::sitkComplexFloat64, -13 >::Value:
@@ -296,42 +286,10 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   len = std::accumulate( size.begin(), size.end(), size_t(1), std::multiplies<size_t>() );
   len *= pixelSize;
 
-  // When the string is null, the bytearray is uninitialized but allocated
-  byteArray = PyByteArray_FromStringAndSize( NULL, len );
-  if( !byteArray )
-    {
-    PyErr_SetString( PyExc_RuntimeError, "Error initializing bytearray." );
-    SWIG_fail;
-    }
+  res = PyBuffer_FillInfo(&pybuffer, NULL, (void*)sitkBufferPtr, len, 0, PyBUF_CONTIG);
+  byteArray = PyMemoryView_FromBuffer(&pybuffer);
 
-  char *arrayView;
-  if( (arrayView = PyByteArray_AsString( byteArray ) ) == NULL  )
-    {
-    SWIG_fail;
-    }
-
-  shape = new npy_intp[dimension];
-  for(unsigned int idx = 0; idx <dimension; ++idx)
-    {
-    shape[idx] = size[idx];
-    }
-
-  //byteArray = PyArray_SimpleNewFromData(dimension, shape, typenum, (void*)sitkBufferPtr);
-
-  //byteArray = PyBuffer_FromReadWriteMemory((void*)sitkBufferPtr, len);
-////memcpy( arrayView, sitkBufferPtr, len );
-  if(bWritable)
-    {
-    std::cout << "SWIG:Read-Write" << std::endl;
-    byteArray = PyBuffer_FromReadWriteMemory((void*)sitkBufferPtr, len);
-    }
-  else
-    {
-    std::cout << "SWIG:Read-Only" << std::endl;
-    byteArray = PyBuffer_FromMemory((void*)sitkBufferPtr, len);
-    }
-
-  delete [] shape;
+  PyBuffer_Release(&pybuffer);
   return byteArray;
 
 fail:
