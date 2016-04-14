@@ -816,7 +816,6 @@ def GetImageFromArray( arr, isVector=False):
 def GetImageViewFromArray( arr, isVector=False):
     """Get a SimpleITK Image from a numpy array. If isVector is True, then a 3D array will be treated as a 2D vector image, otherwise it will be treated as a 3D image"""
 
-    print "Debug 01"
     if not HAVE_NUMPY:
         raise ImportError('Numpy not available.')
 
@@ -824,20 +823,17 @@ def GetImageViewFromArray( arr, isVector=False):
 
     assert arr.ndim in ( 2, 3, 4 ), \
       "Only arrays of 2, 3 or 4 dimensions are supported."
-    print "Debug 02"
     if ( arr.ndim == 3 and isVector ) or (arr.ndim == 4):
       id = _get_sitk_vector_pixelid( arr )
       img = Image( arr.shape[-2::-1] , id, arr.shape[-1] )
     elif arr.ndim in ( 2, 3 ):
       id = _get_sitk_pixelid( arr )
       img = Image( arr.shape[::-1], id )
-    print "Debug 03"
-    #_SimpleITK._SetImageFromArray( z.tostring(), img )
-    _SimpleITK._SetImageViewFromArray( arr, img )
+    _SimpleITK._SetImageFromArray( z.tostring(), img )
+    #_SimpleITK._SetImageViewFromArray( arr, img )
     #_SimpleITK._SetImageViewFromArray( arr.tostring(), img )
     #print RefNum
     #print type(RefNum)
-    print "Debug 04"
     #img.SetNumPyArray(RefNum)
     return img
 %}
