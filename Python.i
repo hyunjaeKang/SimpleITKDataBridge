@@ -829,8 +829,8 @@ def GetImageViewFromArray( arr, isVector=False):
     elif arr.ndim in ( 2, 3 ):
       id = _get_sitk_pixelid( arr )
       img = Image( arr.shape[::-1], id )
-    _SimpleITK._SetImageFromArray( z.tostring(), img )
-    #_SimpleITK._SetImageViewFromArray( arr, img )
+    #_SimpleITK._SetImageFromArray( z.tostring(), img )
+    _SimpleITK._SetImageViewFromArray( arr, img )
     #_SimpleITK._SetImageViewFromArray( arr.tostring(), img )
     #print RefNum
     #print type(RefNum)

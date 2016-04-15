@@ -67,7 +67,7 @@ int sitkImportImageBuffer(sitk::Image * sitkImage, const void* buffer, size_t nu
 
   importer->SetImportPointer( (ComponentType *)buffer,
                               numberOfPixels,
-                              true );
+                              false );
 
   importer->Update();
 
