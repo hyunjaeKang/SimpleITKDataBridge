@@ -642,6 +642,8 @@ try:
 except ImportError:
     HAVE_NUMPY = False
 
+import datetime as dt
+
 
 def _get_numpy_dtype( sitkImage ):
     """Given a SimpleITK image, returns the numpy.dtype which describes the data"""
@@ -802,6 +804,7 @@ def GetImageFromArray( arr, isVector=False):
     assert z.ndim in ( 2, 3, 4 ), \
       "Only arrays of 2, 3 or 4 dimensions are supported."
 
+    time1_start =  dt.datetime.now()
     if ( z.ndim == 3 and isVector ) or (z.ndim == 4):
       id = _get_sitk_vector_pixelid( z )
       img = Image( z.shape[-2::-1] , id, z.shape[-1] )
@@ -809,7 +812,14 @@ def GetImageFromArray( arr, isVector=False):
       id = _get_sitk_pixelid( z )
       img = Image( z.shape[::-1], id )
 
+
+    time1_elapsed = dt.datetime.now() - time1_start
+    print ("\nProcessing time of sitk.Image    :: %.1f (us)"%time1_elapsed.microseconds)
+
+    time2_start =  dt.datetime.now()
     _SimpleITK._SetImageFromArray( z.tostring(), img )
+    time2_elapsed = dt.datetime.now() - time2_start
+    print ("Processing time of _SetImageFromArray    :: %.1f (us)"%time2_elapsed.microseconds)
 
     return img
 
@@ -819,19 +829,31 @@ def GetImageViewFromArray( arr, isVector=False):
     if not HAVE_NUMPY:
         raise ImportError('Numpy not available.')
 
-    z = numpy.asarray( arr )
+    #z = numpy.asarray( arr )
 
     assert arr.ndim in ( 2, 3, 4 ), \
       "Only arrays of 2, 3 or 4 dimensions are supported."
+
+    time1_start =  dt.datetime.now()
     if ( arr.ndim == 3 and isVector ) or (arr.ndim == 4):
       id = _get_sitk_vector_pixelid( arr )
       img = Image( arr.shape[-2::-1] , id, arr.shape[-1] )
     elif arr.ndim in ( 2, 3 ):
       id = _get_sitk_pixelid( arr )
       img = Image( arr.shape[::-1], id )
-    #_SimpleITK._SetImageFromArray( z.tostring(), img )
-    _SimpleITK._SetImageViewFromArray( arr, img )
-    #_SimpleITK._SetImageViewFromArray( arr.tostring(), img )
+
+    time1_elapsed = dt.datetime.now() - time1_start
+    print ("\nProcessing time of sitk.Image    :: %.1f (us)"%time1_elapsed.microseconds)
+    #Processing time of sitk.Image    :: 2054.0 (us)  1000*1000
+
+    time2_start =  dt.datetime.now()
+    #_SimpleITK._SetImageFromArray( z.tostring(), img )     # 1000*1000 7393 us  (5595.0)
+
+    _SimpleITK._SetImageViewFromArray( arr, img )          # 1000*1000 2063 us  22.0 (us)
+
+    #_SimpleITK._SetImageViewFromArray( arr.tostring(), img )# 1000*1000 6455 us   5703.0 (us)
+    time2_elapsed = dt.datetime.now() - time2_start
+    print ("Processing time of _SetImageViewFromArray    :: %.1f (us)"%time2_elapsed.microseconds)
     #print RefNum
     #print type(RefNum)
     #img.SetNumPyArray(RefNum)

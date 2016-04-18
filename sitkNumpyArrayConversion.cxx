@@ -43,38 +43,48 @@ int sitkImportImageBuffer(sitk::Image * sitkImage, const void* buffer, size_t nu
   typedef typename ImageType::Pointer                                               ImagePointer;
 
   typedef typename itk::DefaultConvertPixelTraits<PixelType>::ComponentType         ComponentType;
-  typedef itk::ImportImageFilter <ComponentType, ImageType::ImageDimension>         ImportImageFilterType;
-  typedef typename itk::Image< ComponentType, ImageType::ImageDimension >::Pointer  OutputImagePointer;
+//  typedef itk::ImportImageFilter <ComponentType, ImageType::ImageDimension>         ImportImageFilterType;
+//  typedef typename itk::Image< ComponentType, ImageType::ImageDimension >::Pointer  OutputImagePointer;
 
-  typename ImageType::SizeType            size;
-  typename ImageType::IndexType           start;
-  typename ImageType::RegionType          region;
-  typename ImageType::PointType           origin;
-  typename ImageType::SpacingType         spacing;
-  typename ImportImageFilterType::Pointer importer = ImportImageFilterType::New();
+//  typename ImageType::SizeType            size;
+//  typename ImageType::IndexType           start;
+//  typename ImageType::RegionType          region;
+//  typename ImageType::PointType           origin;
+//  typename ImageType::SpacingType         spacing;
+//  typename ImportImageFilterType::Pointer importer = ImportImageFilterType::New();
 
-  start.Fill( 0 );
-  size = itk::simple::sitkSTLVectorToITK< typename ImageType::SizeType>( sitkImage->GetSize() );
+//  start.Fill( 0 );
+//  size = itk::simple::sitkSTLVectorToITK< typename ImageType::SizeType>( sitkImage->GetSize() );
 
-  region.SetIndex( start );
-  region.SetSize( size );
-  origin.Fill( 0.0 );
-  spacing.Fill( 1.0 );
+//  region.SetIndex( start );
+//  region.SetSize( size );
+//  origin.Fill( 0.0 );
+//  spacing.Fill( 1.0 );
 
-  importer->SetRegion( region );
-  importer->SetOrigin( origin );
-  importer->SetSpacing( spacing );
+//  importer->SetRegion( region );
+//  importer->SetOrigin( origin );
+//  importer->SetSpacing( spacing );
 
-  importer->SetImportPointer( (ComponentType *)buffer,
-                              numberOfPixels,
-                              false );
+//  importer->SetImportPointer( (ComponentType *)buffer,
+//                              numberOfPixels,
+//                              false );
 
-  importer->Update();
+//  importer->Update();
 
-  OutputImagePointer output = importer->GetOutput();
-  output->DisconnectPipeline();
+//  OutputImagePointer output = importer->GetOutput();
+//  output->DisconnectPipeline();
 
-  *sitkImage = sitk::Image(output);
+//  *sitkImage = sitk::Image(output);
+
+  //typedef typename itk::Image< ComponentType, ImageType::ImageDimension >  InternalImagetype;
+
+   typedef TImage  InternalImagetype;
+   typename InternalImagetype::Pointer itkImage =
+    dynamic_cast < InternalImagetype*>( sitkImage->GetITKBase() );
+
+    itkImage->GetPixelContainer()->SetImportPointer((ComponentType *)buffer,
+                                                     numberOfPixels,
+                                                     false );
 
   return 1;
 }
