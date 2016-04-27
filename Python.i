@@ -832,39 +832,19 @@ def GetImageViewFromArray( arr, isVector=False):
     if not HAVE_NUMPY:
         raise ImportError('Numpy not available.')
 
-    #z = numpy.asarray( arr )
-
     assert arr.ndim in ( 2, 3, 4 ), \
       "Only arrays of 2, 3 or 4 dimensions are supported."
 
-    time2_start =  dt.datetime.now()
+
     if ( arr.ndim == 3 and isVector ) or (arr.ndim == 4):
       id = _get_sitk_vector_pixelid( arr )
-      print "VectorImage"
-      print id
-      print type(id)
-      img2 = _SimpleITK._SetImageViewFromArray( arr, arr.shape[-2::-1] , id, arr.shape[-1] )
+      img = Image(_SimpleITK._SetImageViewFromArray( arr, arr.shape[-2::-1] , id, arr.shape[-1] ))
     elif arr.ndim in ( 2, 3 ):
       id = _get_sitk_pixelid( arr )
-      print "ScalarImage"
-      print id
-      print type(id)
-      img2 = _SimpleITK._SetImageViewFromArray( arr, arr.shape[::-1], id )
+      img = Image(_SimpleITK._SetImageViewFromArray( arr, arr.shape[::-1], id ))
 
-    #img2 = _SimpleITK._SetImageViewFromArray( arr, arr.shape[::-1])
-    #img2 = _SimpleITK._SetImageViewFromArray( arr.shape[::-1])
-    #img2 = _SimpleITK._SetImageViewFromArray( (1,2,3))
-    print "Got"
-    print img2
-    time2_elapsed = dt.datetime.now() - time2_start
-    print ("Processing time of _SetImageViewFromArray    :: %.1f (us)"%time2_elapsed.microseconds)
 
-    time3_start =  dt.datetime.now()
-    img3 = Image(img2)
-    time3_elapsed = dt.datetime.now() - time3_start
-    print ("Processing time of img3 = Image(img2)    :: %.1f (us)"%time3_elapsed.microseconds)
-
-    return img3
+    return img
 %}
 
 
