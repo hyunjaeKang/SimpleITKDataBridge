@@ -804,25 +804,14 @@ def GetImageFromArray( arr, isVector=False):
     assert z.ndim in ( 2, 3, 4 ), \
       "Only arrays of 2, 3 or 4 dimensions are supported."
 
-    time1_start =  dt.datetime.now()
     if ( z.ndim == 3 and isVector ) or (z.ndim == 4):
       id = _get_sitk_vector_pixelid( z )
-      print "######id :: ", id
       img = Image( z.shape[-2::-1] , id, z.shape[-1] )
     elif z.ndim in ( 2, 3 ):
       id = _get_sitk_pixelid( z )
-      print "######id :: ", id
       img = Image( z.shape[::-1], id )
 
-
-    print "######id :: ", id
-    time1_elapsed = dt.datetime.now() - time1_start
-    print ("\nProcessing time of sitk.Image    :: %.1f (us)"%time1_elapsed.microseconds)
-
-    time2_start =  dt.datetime.now()
     _SimpleITK._SetImageFromArray( z.tostring(), img )
-    time2_elapsed = dt.datetime.now() - time2_start
-    print ("Processing time of _SetImageFromArray    :: %.1f (us)"%time2_elapsed.microseconds)
 
     return img
 
@@ -842,7 +831,6 @@ def GetImageViewFromArray( arr, isVector=False):
     elif arr.ndim in ( 2, 3 ):
       id = _get_sitk_pixelid( arr )
       img = Image(_SimpleITK._SetImageViewFromArray( arr, arr.shape[::-1], id ))
-
 
     return img
 %}
