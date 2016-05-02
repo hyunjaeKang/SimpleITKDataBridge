@@ -771,6 +771,7 @@ def GetArrayFromImage(image, arrayview = False, writeable = False):
       arr.shape = shape[::-1]
       return arr
     else:
+      image.MakeUnique()
       imageMemoryView = _SimpleITK._GetMemoryViewFromImage(image)
       arrayView = numpy.asarray(imageMemoryView).view(dtype = dtype).reshape(shape[::-1])
       if not writeable:
