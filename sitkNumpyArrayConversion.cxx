@@ -20,7 +20,6 @@
 #include <numeric>
 #include <functional>
 
-#include "SimpleITK.h"
 #include "sitkImage.h"
 #include "sitkConditional.h"
 #include "sitkExceptionObject.h"
@@ -29,7 +28,6 @@
 #include "itkVectorImage.h"
 
 namespace sitk = itk::simple;
-
 
 template<typename TPixel, unsigned int VImageDimension = 2>
 sitk::Image*
@@ -44,7 +42,7 @@ sitkImportScalarImageBuffer(std::vector< unsigned int > sitkimagesize,
   numberOfPixels = std::accumulate( sitkimagesize.begin(),
                                     sitkimagesize.end(),
                                     size_t(1),
-                                     std::multiplies<size_t>() );
+                                    std::multiplies<size_t>() );
   len = numberOfPixels*pixelSize;
 
   if ( buffer_len != len )
@@ -127,8 +125,6 @@ sitkImportVectorImageBuffer(std::vector< unsigned int > sitkimagesize,
 
   return (itk::simple::Image *)new itk::simple::Image(itkImg);
 }
-
-//#include "sitkNumpyArrayConversion.h"
 
 // Python is written in C
 #ifdef __cplusplus
@@ -260,7 +256,6 @@ sitk_GetByteArrayFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
     {
     SWIG_fail;
     }
-
   memcpy( arrayView, sitkBufferPtr, len );
 
   return byteArray;
@@ -271,14 +266,14 @@ fail:
 }
 
 /** An internal function that expose the image buffer
- * into a python byte array. The byte array can later be converted
- * into a numpy array with the from buffer method.
+ * into a python memory view. The memory view can later be converted
+ * into a numpy array view with the from buffer method.
  */
 static PyObject *
-sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
+sitk_GetMemoryViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
 {
   // Holds the bulk data
-  PyObject * byteArray = NULL;
+  PyObject * memoryView = NULL;
   Py_buffer pybuffer;
 
   const void * sitkBufferPtr;
@@ -287,7 +282,6 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   size_t pixelSize = 1;
 
   unsigned int dimension;
-
   int typenum = 0;
 
   /* Cast over to a sitk Image. */
@@ -297,7 +291,6 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   const sitk::Image * sitkImage;
   int res = 0;
 
-
   if( !PyArg_ParseTuple( args, "O", &pyImage) )
     {
     SWIG_fail; // SWIG_fail is a macro that says goto: fail (return NULL)
@@ -306,7 +299,7 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   res = SWIG_ConvertPtr( pyImage, &voidImage, SWIGTYPE_p_itk__simple__Image, 0 );
   if( !SWIG_IsOK( res ) )
     {
-    SWIG_exception_fail(SWIG_ArgError(res), "in method 'GetByteArrayFromImage', argument needs to be of type 'sitk::Image *'");
+    SWIG_exception_fail(SWIG_ArgError(res), "in method 'GetByteArrayViewFromImage', argument needs to be of type 'sitk::Image *'");
     }
   sitkImage = reinterpret_cast< sitk::Image * >( voidImage );
 
@@ -377,7 +370,7 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
     }
 
   dimension = sitkImage->GetDimension();
-  size = sitkImage->GetSize();
+  size      = sitkImage->GetSize();
 
   // if the image is a vector just treat is as another dimension
   if ( sitkImage->GetNumberOfComponentsPerPixel() > 1 )
@@ -389,15 +382,16 @@ sitk_GetByteArrayViewFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args)
   len *= pixelSize;
 
   res = PyBuffer_FillInfo(&pybuffer, NULL, (void*)sitkBufferPtr, len, 0, PyBUF_CONTIG);
-  byteArray = PyMemoryView_FromBuffer(&pybuffer);
+  memoryView = PyMemoryView_FromBuffer(&pybuffer);
 
   PyBuffer_Release(&pybuffer);
-  return byteArray;
+  return memoryView;
 
 fail:
-  Py_XDECREF( byteArray );
+  Py_XDECREF( memoryView );
   return NULL;
 }
+
 
 
 /** An internal function that performs a deep copy of the image buffer
@@ -588,7 +582,7 @@ sitk_SetImageViewFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
   PyObject*    resultobj      = NULL;
   sitk::Image* sitkImage      = NULL ;
 
-  unsigned int dim          = 0;
+  unsigned int dim            = 0;
   int          ImageType      = 0;
   int          NumOfComponent = 0;
   int          ret            = 0;
@@ -1038,7 +1032,4 @@ fail:
 
 #ifdef __cplusplus
 } // end extern "C"
-
-
-
 #endif

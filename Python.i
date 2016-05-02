@@ -15,7 +15,7 @@
 *  limitations under the License.
 *
 *=========================================================================*/
-//#if SWIGPYTHON
+#if SWIGPYTHON
 
 %{
 #include "sitkPyCommand.h"
@@ -86,32 +86,40 @@
 
         %pythoncode %{
 
+        """ Before deletion of this sitk::Image, replace the base of the exported
+            NumPy array views with the base of a NumPy array instance which is
+            generated with the function of _retrieveExportedNumPyarrayview().
+            This operation is for keeping all element values of exported NumPy
+            array view after deletion of this sitk::Image object. """
+
         def __del__(self):
-            #print "---ID::", id(self)
-            #print "sitk::Image call __del__"
-            #print "Delete sitk::Image"
-            Tempnumpyarray = GetArrayFromImage(self)
+            self._retrieveExportedNumPyarrayview()
+
+        def _retrieveExportedNumPyarrayview(self):
             try:
-                for nparr in self.convertedndarraylist:
-                    ref = sys.getrefcount(nparr)
-                    if ref > 3:
-                        bwritable  = nparr.flags.writeable
-                        nparr.data = Tempnumpyarray.data
-                        nparr.setflags(write = bwritable)
+                if len(self._ExportedNumPyArrayViewsList) > 0:
+                    for nparr in self._ExportedNumPyArrayViewsList:
+                        ref = sys.getrefcount(nparr)
+                        if ref > 3:
+                            try:
+                                Tempnumpyarray
+                            except:
+                                Tempnumpyarray = GetArrayFromImage(self, arrayview = False)
+                            bwritable  = nparr.flags.writeable
+                            nparr.data = Tempnumpyarray.data
+                            nparr.setflags(write = bwritable)
             except:
                 pass
 
-        def __dealloc__(self): ### does not work with swig and python
-            pass
-            #print id(self)
-            #print "sitk::Image call __dealloc__"
+        """ Keep instances of converted NumPy array view to retrieve
+            their element values after deletion of this sitk::Image object. """
 
-        def SetNumPyArray(self, numpyarray):
+        def _addExportedNumPyArrayView(self, numpyarray):
             try:
-                self.convertedndarraylist
+                self._ExportedNumPyArrayViewsList
             except:
-                self.convertedndarraylist = []
-            self.convertedndarraylist.append(numpyarray)
+                self._ExportedNumPyArrayViewsList = []
+            self._ExportedNumPyArrayViewsList.append(numpyarray)
 
         # mathematical operators
 
@@ -620,6 +628,8 @@
 
          %}
 
+
+
 }
 
 // This is included inline because SwigMethods (SimpleITKPYTHON_wrap.cxx)
@@ -629,10 +639,9 @@
 %}
 // Numpy array conversion support
 %native(_GetByteArrayFromImage) PyObject *sitk_GetByteArrayFromImage( PyObject *self, PyObject *args );
-%native(_GetByteArrayViewFromImage) PyObject *sitk_GetByteArrayViewFromImage( PyObject *self, PyObject *args);
+%native(_GetMemoryViewFromImage) PyObject *sitk_GetMemoryViewFromImage( PyObject *self, PyObject *args);
 %native(_SetImageFromArray) PyObject *sitk_SetImageFromArray( PyObject *self, PyObject *args );
 %native(_SetImageViewFromArray) PyObject *sitk_SetImageViewFromArray( PyObject *self, PyObject *args );
-
 
 %pythoncode %{
 
@@ -641,8 +650,6 @@ try:
     import numpy
 except ImportError:
     HAVE_NUMPY = False
-
-import datetime as dt
 
 
 def _get_numpy_dtype( sitkImage ):
@@ -743,37 +750,11 @@ def _get_sitk_vector_pixelid(numpy_array_type):
 
 # SimplyITK <-> Numpy Array conversion support.
 
-def GetArrayFromImage(image):
-    """Get a numpy array from a SimpleITK Image."""
+def GetArrayFromImage(image, arrayview = False, writeable = False):
+    """Get a NumPy array/ array view from a SimpleITK Image."""
 
     if not HAVE_NUMPY:
         raise ImportError('Numpy not available.')
-
-    imageByteArray = _SimpleITK._GetByteArrayFromImage(image)
-
-    pixelID = image.GetPixelIDValue()
-    assert pixelID != sitkUnknown, "An SimpleITK image of Unknow pixel type should now exists!"
-
-    dtype = _get_numpy_dtype( image )
-
-    arr = numpy.frombuffer(imageByteArray, dtype )
-
-    shape = image.GetSize();
-    if image.GetNumberOfComponentsPerPixel() > 1:
-      shape = ( image.GetNumberOfComponentsPerPixel(), ) + shape
-
-    arr.shape = shape[::-1]
-
-    return arr
-
-def GetArrayViewFromImage(image, writeable = False):
-    """Get a numpy array view from a SimpleITK Image with less copy operation."""
-
-    if not HAVE_NUMPY:
-        raise ImportError('Numpy not available.')
-
-
-    imageByteArrayView = _SimpleITK._GetByteArrayViewFromImage(image)
 
     pixelID = image.GetPixelIDValue()
     assert pixelID != sitkUnknown, "An SimpleITK image of Unknow pixel type should now exists!"
@@ -784,39 +765,23 @@ def GetArrayViewFromImage(image, writeable = False):
     if image.GetNumberOfComponentsPerPixel() > 1:
       shape = ( image.GetNumberOfComponentsPerPixel(), ) + shape
 
-    arr = numpy.asarray(imageByteArrayView).view(dtype = dtype).reshape(shape[::-1])
+    if arrayview == False:
+      imageByteArray = _SimpleITK._GetByteArrayFromImage(image)
+      arr = numpy.frombuffer(imageByteArray, dtype )
+      arr.shape = shape[::-1]
+      return arr
+    else:
+      imageMemoryView = _SimpleITK._GetMemoryViewFromImage(image)
+      arrayView = numpy.asarray(imageMemoryView).view(dtype = dtype).reshape(shape[::-1])
+      if not writeable:
+        arrayView.setflags(write = writeable)
+      image._addExportedNumPyArrayView(arrayView)
+      return arrayView
 
-    if not writeable:
-      arr.setflags(write = writeable)
-
-    image.SetNumPyArray(arr)
-
-    return arr
-
-def GetImageFromArray( arr, isVector=False):
-    """Get a SimpleITK Image from a numpy array. If isVector is True, then a 3D array will be treated as a 2D vector image, otherwise it will be treated as a 3D image"""
-
-    if not HAVE_NUMPY:
-        raise ImportError('Numpy not available.')
-
-    z = numpy.asarray( arr )
-
-    assert z.ndim in ( 2, 3, 4 ), \
-      "Only arrays of 2, 3 or 4 dimensions are supported."
-
-    if ( z.ndim == 3 and isVector ) or (z.ndim == 4):
-      id = _get_sitk_vector_pixelid( z )
-      img = Image( z.shape[-2::-1] , id, z.shape[-1] )
-    elif z.ndim in ( 2, 3 ):
-      id = _get_sitk_pixelid( z )
-      img = Image( z.shape[::-1], id )
-
-    _SimpleITK._SetImageFromArray( z.tostring(), img )
-
-    return img
-
-def GetImageViewFromArray( arr, isVector=False):
-    """Get a SimpleITK Image from a numpy array. If isVector is True, then a 3D array will be treated as a 2D vector image, otherwise it will be treated as a 3D image"""
+def GetImageFromArray( arr, isVector=False, imageview = False):
+    """Get a SimpleITK Image/ Image view from a numpy array.
+    If isVector is True, then a 3D array will be treated as a 2D vector image,
+    otherwise it will be treated as a 3D image"""
 
     if not HAVE_NUMPY:
         raise ImportError('Numpy not available.')
@@ -824,15 +789,23 @@ def GetImageViewFromArray( arr, isVector=False):
     assert arr.ndim in ( 2, 3, 4 ), \
       "Only arrays of 2, 3 or 4 dimensions are supported."
 
-
     if ( arr.ndim == 3 and isVector ) or (arr.ndim == 4):
       id = _get_sitk_vector_pixelid( arr )
-      img = Image(_SimpleITK._SetImageViewFromArray( arr, arr.shape[-2::-1] , id, arr.shape[-1] ))
+      if imageview == False:
+        img = Image( arr.shape[-2::-1] , id, arr.shape[-1] )
+        _SimpleITK._SetImageFromArray( arr, img )
+      else:
+        img = Image(_SimpleITK._SetImageViewFromArray( arr, arr.shape[-2::-1] , id, arr.shape[-1] ))
     elif arr.ndim in ( 2, 3 ):
       id = _get_sitk_pixelid( arr )
-      img = Image(_SimpleITK._SetImageViewFromArray( arr, arr.shape[::-1], id ))
+      if imageview == False:
+        img = Image( arr.shape[::-1], id )
+        _SimpleITK._SetImageFromArray( arr, img )
+      else:
+        img = Image(_SimpleITK._SetImageViewFromArray( arr, arr.shape[::-1], id ))
 
     return img
+
 %}
 
 
@@ -865,4 +838,4 @@ def GetImageViewFromArray( arr, isVector=False):
  }
 };
 
-//#endif
+#endif
