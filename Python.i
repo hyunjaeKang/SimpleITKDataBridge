@@ -639,9 +639,7 @@
 %}
 // Numpy array conversion support
 %native(_GetByteArrayFromImage) PyObject *sitk_GetByteArrayFromImage( PyObject *self, PyObject *args );
-%native(_GetMemoryViewFromImage) PyObject *sitk_GetMemoryViewFromImage( PyObject *self, PyObject *args);
 %native(_SetImageFromArray) PyObject *sitk_SetImageFromArray( PyObject *self, PyObject *args );
-%native(_SetImageViewFromArray) PyObject *sitk_SetImageViewFromArray( PyObject *self, PyObject *args );
 
 %pythoncode %{
 
@@ -766,13 +764,14 @@ def GetArrayFromImage(image, arrayview = False, writeable = False):
       shape = ( image.GetNumberOfComponentsPerPixel(), ) + shape
 
     if arrayview == False:
-      imageByteArray = _SimpleITK._GetByteArrayFromImage(image)
+      imageByteArray = _SimpleITK._GetByteArrayFromImage(image, int(arrayview))
       arr = numpy.frombuffer(imageByteArray, dtype )
       arr.shape = shape[::-1]
       return arr
     else:
       image.MakeUnique()
-      imageMemoryView = _SimpleITK._GetMemoryViewFromImage(image)
+      #imageMemoryView = _SimpleITK._GetMemoryViewFromImage(image)
+      imageMemoryView = _SimpleITK._GetByteArrayFromImage(image, int(arrayview))
       arrayView = numpy.asarray(imageMemoryView).view(dtype = dtype).reshape(shape[::-1])
       if not writeable:
         arrayView.setflags(write = writeable)
@@ -794,16 +793,16 @@ def GetImageFromArray( arr, isVector=False, imageview = False):
       id = _get_sitk_vector_pixelid( arr )
       if imageview == False:
         img = Image( arr.shape[-2::-1] , id, arr.shape[-1] )
-        _SimpleITK._SetImageFromArray( arr, img )
+        _SimpleITK._SetImageFromArray( arr, int(imageview), img )
       else:
-        img = Image(_SimpleITK._SetImageViewFromArray( arr, arr.shape[-2::-1] , id, arr.shape[-1] ))
+        img = Image(_SimpleITK._SetImageFromArray( arr, int(imageview), arr.shape[-2::-1] , id, arr.shape[-1] ))
     elif arr.ndim in ( 2, 3 ):
       id = _get_sitk_pixelid( arr )
       if imageview == False:
         img = Image( arr.shape[::-1], id )
-        _SimpleITK._SetImageFromArray( arr, img )
+        _SimpleITK._SetImageFromArray( arr, int(imageview),img )
       else:
-        img = Image(_SimpleITK._SetImageViewFromArray( arr, arr.shape[::-1], id ))
+        img = Image(_SimpleITK._SetImageFromArray( arr, int(imageview), arr.shape[::-1], id ))
 
     return img
 
