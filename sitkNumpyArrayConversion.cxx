@@ -24,9 +24,6 @@
 #include "sitkConditional.h"
 #include "sitkExceptionObject.h"
 
-#include "itkImage.h"
-#include "itkVectorImage.h"
-
 namespace sitk = itk::simple;
 
 // Python is written in C
@@ -512,9 +509,8 @@ sitk_SetImageFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
     }
   else
     {
-    sitkImage = new sitk::Image(importer.Execute());
     PyBuffer_Release( &pyBuffer );
-    resultobj  = SWIG_NewPointerObj(SWIG_as_voidptr(sitkImage), SWIGTYPE_p_itk__simple__Image, SWIG_POINTER_NEW |  0 );
+    resultobj = SWIG_NewPointerObj((new itk::simple::Image(static_cast< const itk::simple::Image& >(importer.Execute()))), SWIGTYPE_p_itk__simple__Image, SWIG_POINTER_OWN |  0 );
     return resultobj;
     }
 
