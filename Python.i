@@ -564,7 +564,6 @@
            This method takes 3 parameters in 2D: the x and y index then the value,
            and 4 parameters in 3D: the x, y and z index then the value."""
 
-
           pixelID = self.GetPixelIDValue()
           if pixelID == sitkUnknown:
             raise Exception("invalid pixel type")
@@ -625,10 +624,7 @@
 
           raise Exception("unknown pixel type")
 
-
          %}
-
-
 
 }
 
@@ -648,6 +644,21 @@ try:
     import numpy
 except ImportError:
     HAVE_NUMPY = False
+
+class sitkndarray(numpy.ndarray):
+    """ A customized NumPy.ndarray for SimpleITK Image."""
+
+    bConverted = False
+
+    def SetConvertedFlag(self, converted = True):
+      self.bConverted = converted
+
+    def __setitem__(self, item, to):
+      if self.bConverted == True:
+        temp = numpy.array(self, copy = True)
+        self.data = temp.data
+        self.bConverted = False
+      super(sitkndarray, self).__setitem__(item, to)
 
 
 def _get_numpy_dtype( sitkImage ):
@@ -771,8 +782,10 @@ def GetArrayFromImage(image, arrayview = False, writeable = False):
     else:
       image.MakeUnique()
       imageMemoryView = _SimpleITK._GetByteArrayFromImage(image, int(arrayview))
-      arrayView = numpy.asarray(imageMemoryView).view(dtype = dtype).reshape(shape[::-1])
-      if not writeable:
+      arrayView = numpy.asarray(imageMemoryView).view(dtype = dtype).reshape(shape[::-1]).view(sitkndarray)
+      if writeable == True:
+        arrayView.SetConvertedFlag(True)
+      else:
         arrayView.setflags(write = writeable)
       image._addExportedNumPyArrayView(arrayView)
       return arrayView
