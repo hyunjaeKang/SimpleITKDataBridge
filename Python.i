@@ -803,18 +803,10 @@ def GetImageFromArray( arr, isVector=False, imageview = False):
 
     if ( arr.ndim == 3 and isVector ) or (arr.ndim == 4):
       id = _get_sitk_vector_pixelid( arr )
-      if imageview == False:
-        img = Image( arr.shape[-2::-1] , id, arr.shape[-1] )
-        _SimpleITK._SetImageFromArray( arr, int(imageview), img )
-      else:
-        img = Image(_SimpleITK._SetImageFromArray( arr, int(imageview), arr.shape[-2::-1] , id, arr.shape[-1] ))
+      img = _SimpleITK._SetImageFromArray( arr, int(imageview), arr.shape[-2::-1], id, arr.shape[-1] )
     elif arr.ndim in ( 2, 3 ):
       id = _get_sitk_pixelid( arr )
-      if imageview == False:
-        img = Image( arr.shape[::-1], id )
-        _SimpleITK._SetImageFromArray( arr, int(imageview),img )
-      else:
-        img = _SimpleITK._SetImageFromArray( arr, int(imageview), arr.shape[::-1], id )
+      img = _SimpleITK._SetImageFromArray( arr, int(imageview), arr.shape[::-1], id )
 
     return img
 

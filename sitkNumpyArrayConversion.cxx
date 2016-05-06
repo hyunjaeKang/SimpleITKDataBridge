@@ -195,8 +195,10 @@ fail:
 static PyObject*
 sitk_SetImageFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
 {
-  PyObject *                  pyImage       = NULL;
-  PyObject *                  resultobj     = NULL;
+  PyObject *                  pyImageObj    = NULL;
+  PyObject *                  obj           = NULL;
+  PyObject *                  shapeseq      = NULL;
+  PyObject *                  item          = NULL;
 
   Py_ssize_t                  buffer_len;
   Py_buffer                   pyBuffer;
@@ -204,146 +206,83 @@ sitk_SetImageFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
 
   const void *                buffer;
   void *                      sitkBufferPtr = NULL;
-  sitk::Image *         sitkImage     = NULL;
+  sitk::Image *               sitkImage     = NULL;
   sitk::ImportImageFilter     importer;
 
   int                         arrayViewFlag = 0;
   int                         PixelIDValue  = 0;
   int                         NumOfComponent= 1;
-  unsigned int                numberOfArgs  = PyTuple_Size(args);
+  unsigned int                dimension     = 0;
+
 
   size_t                      pixelSize     = 1;
-  unsigned int                dimension     = 0;
   size_t                      len           = 1;
   std::vector< unsigned int > size;
   std::vector< double>        spacing;
   std::vector< double>        origin;
   std::vector< double>        direction;
 
-  if(numberOfArgs < 4)  // Get SimpleITK image buffer with copy operation
+  if (!PyArg_ParseTuple( args, "s*iOi|i", &pyBuffer, &arrayViewFlag, &obj, &PixelIDValue, &NumOfComponent ))
     {
-    // We wish to support both the new PEP3118 buffer interface and the
-    // older. So we first try to parse the arguments with the new buffer
-    // protocol, then the old.
-    if (!PyArg_ParseTuple( args, "s*iO", &pyBuffer, &arrayViewFlag, &pyImage ) )
-      {
-      PyErr_Clear();
+    PyErr_Clear();
 
 #ifdef PY_SSIZE_T_CLEAN
-      typedef Py_ssize_t bufSizeType;
+    typedef Py_ssize_t bufSizeType;
 #else
-      typedef int bufSizeType;
+    typedef int bufSizeType;
 #endif
 
-      bufSizeType _len;
-      // This function takes 2 arguments from python, the first is an
-      // python object which support the old "ReadBuffer" interface
-      if( !PyArg_ParseTuple( args, "s#iO", &buffer, &_len, &arrayViewFlag, &pyImage ) )
-        {
-        return NULL;
-        }
-      buffer_len = _len;
-      }
-    else
+    bufSizeType _len;
+    if( !PyArg_ParseTuple( args, "s#iOi|i", &buffer, &_len, &arrayViewFlag, &obj, &PixelIDValue, &NumOfComponent ) )
       {
-      if ( PyBuffer_IsContiguous( &pyBuffer, 'C' ) != 1 )
-        {
-        PyBuffer_Release( &pyBuffer );
-        PyErr_SetString( PyExc_TypeError, "A C Contiguous buffer object is required." );
-        return NULL;
-        }
-      buffer_len = pyBuffer.len;
-      buffer = pyBuffer.buf;
+      return NULL;
       }
-
-    /* Cast over to a sitk Image. */
-      {
-      void * voidImage;
-      int res = 0;
-      res = SWIG_ConvertPtr( pyImage, &voidImage, SWIGTYPE_p_itk__simple__Image, 0 );
-      if( !SWIG_IsOK( res ) )
-        {
-        SWIG_exception_fail(SWIG_ArgError(res), "in method 'SetImageFromArray', argument needs to be of type 'sitk::Image *'");
-        }
-      sitkImage = reinterpret_cast< sitk::Image * >( voidImage );
-      }
-
-      dimension = sitkImage->GetDimension();
-      size = sitkImage->GetSize();
-      NumOfComponent = sitkImage->GetNumberOfComponentsPerPixel();
+    buffer_len = _len;
     }
   else
     {
+    buffer_len = pyBuffer.len;
+    buffer     = pyBuffer.buf;
+    shapeseq   = PySequence_Fast(obj, "expected sequence");
+    dimension  = PySequence_Size(obj);
 
-    PyObject * obj      = NULL;
-    PyObject * shapeseq = NULL;
-    PyObject * item     = NULL;
-
-    if (!PyArg_ParseTuple( args, "s*iOi|i", &pyBuffer, &arrayViewFlag, &obj, &PixelIDValue, &NumOfComponent ))
+    for(unsigned int i=0 ; i< dimension; ++i)
       {
-      PyErr_Clear();
-
-#ifdef PY_SSIZE_T_CLEAN
-      typedef Py_ssize_t bufSizeType;
-#else
-      typedef int bufSizeType;
-#endif
-
-      bufSizeType _len;
-      if( !PyArg_ParseTuple( args, "s#iOi|i", &buffer, &_len, &arrayViewFlag, &obj, &PixelIDValue, &NumOfComponent ) )
-        {
-        return NULL;
-        }
-      buffer_len = _len;
+      item = PySequence_Fast_GET_ITEM(shapeseq,i);
+      size.push_back((unsigned int)PyInt_AsLong(item));
       }
-    else
-      {
-      buffer_len = pyBuffer.len;
-      buffer     = pyBuffer.buf;
-      shapeseq   = PySequence_Fast(obj, "expected sequence");
-      dimension  = PySequence_Size(obj);
+    }
 
-      for(unsigned int i=0 ; i< dimension; ++i)
-        {
-        item = PySequence_Fast_GET_ITEM(shapeseq,i);
-        size.push_back((unsigned int)PyInt_AsLong(item));
-        }
-      }
+  if (dimension == 2 )
+    {
+    spacing      = std::vector<double>( 2, 1.0 );
+    origin       = std::vector<double>( 2, 0.0 );
+    direction    = std::vector<double>( 4, 0.0 );
+    direction[0] = direction[3] = 1.0;
+    }
+  else if (dimension == 3)
+    {
+    spacing      = std::vector<double>( 3, 1.0 );
+    origin       = std::vector<double>( 3, 0.0 );
+    direction    = std::vector<double>( 9, 0.0 );
+    direction[0] = direction[4] = direction[8] = 1.0;
+    }
 
-      if (dimension == 2 )
-        {
-        spacing      = std::vector<double>( 2, 1.0 );
-        origin       = std::vector<double>( 2, 0.0 );
-        direction    = std::vector<double>( 4, 0.0 );
-        direction[0] = direction[3] = 1.0;
-        }
-      else if (dimension == 3)
-        {
-        spacing      = std::vector<double>( 3, 1.0 );
-        origin       = std::vector<double>( 3, 0.0 );
-        direction    = std::vector<double>( 9, 0.0 );
-        direction[0] = direction[4] = direction[8] = 1.0;
-        }
-
-      importer.SetSize( size );
-      importer.SetSpacing( spacing );
-      importer.SetOrigin( origin );
-      importer.SetDirection( direction );
+  if(arrayViewFlag == 0)
+    {
+    sitkImage  = new itk::simple::Image(size, (itk::simple::PixelIDValueEnum)PixelIDValue, NumOfComponent);
+    }
+  else
+    {
+    importer.SetSize( size );
+    importer.SetSpacing( spacing );
+    importer.SetOrigin( origin );
+    importer.SetDirection( direction );
     }
 
   try
     {
-    int tempPixelIDValue;
-    if (arrayViewFlag == 0)
-      {
-      tempPixelIDValue = sitkImage->GetPixelIDValue();
-      }
-    else
-      {
-      tempPixelIDValue = PixelIDValue;
-      }
-
-    switch( tempPixelIDValue )
+    switch( PixelIDValue )
       {
       case sitk::sitkUnknown:
         PyErr_SetString( PyExc_RuntimeError, "Unknown pixel type." );
@@ -504,15 +443,15 @@ sitk_SetImageFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
   if(arrayViewFlag == 0)
     {
     memcpy( (void *)sitkBufferPtr, buffer, len );
-    PyBuffer_Release( &pyBuffer );
-    Py_RETURN_NONE;
     }
   else
     {
-    PyBuffer_Release( &pyBuffer );
-    resultobj = SWIG_NewPointerObj((new itk::simple::Image(static_cast< const itk::simple::Image& >(importer.Execute()))), SWIGTYPE_p_itk__simple__Image, SWIG_POINTER_OWN |  0 );
-    return resultobj;
+    sitkImage  = new itk::simple::Image(static_cast< const itk::simple::Image& >(importer.Execute()));
     }
+
+  PyBuffer_Release( &pyBuffer );
+  pyImageObj = SWIG_NewPointerObj(sitkImage, SWIGTYPE_p_itk__simple__Image, SWIG_POINTER_OWN |  0 );
+  return pyImageObj;
 
 fail:
   PyBuffer_Release( &pyBuffer );
