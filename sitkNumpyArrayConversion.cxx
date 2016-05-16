@@ -52,14 +52,13 @@ sitk_GetByteArrayFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
   /* Cast over to a sitk Image. */
   PyObject *                  pyImage;
   void *                      voidImage;
-  const sitk::Image *         sitkImage;
+  sitk::Image *         sitkImage;
   int                         res           = 0;
   int                         arrayViewFlag = 0;
 
   PyObject *                  memoryView    = NULL;
   Py_buffer                   pyBuffer;
   memset(&pyBuffer, 0, sizeof(Py_buffer));
-
 
   if( !PyArg_ParseTuple( args, "Oi", &pyImage, &arrayViewFlag ) )
     {
@@ -71,6 +70,7 @@ sitk_GetByteArrayFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
     SWIG_exception_fail(SWIG_ArgError(res), "in method 'GetByteArrayFromImage', argument needs to be of type 'sitk::Image *'");
     }
   sitkImage = reinterpret_cast< sitk::Image * >( voidImage );
+  sitkImage->MakeUnique();
 
   switch( sitkImage->GetPixelIDValue() )
     {
