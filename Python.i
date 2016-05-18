@@ -660,6 +660,13 @@ class sitkndarray(numpy.ndarray):
         self.bConverted = False
       super(sitkndarray, self).__setitem__(item, to)
 
+    def itemset(self, *args):
+      if self.bConverted == True:
+        temp = numpy.array(self, copy = True)
+        self.data = temp.data
+        self.bConverted = False
+      super(sitkndarray, self).itemset(*args)
+
 
 def _get_numpy_dtype( sitkImage ):
     """Given a SimpleITK image, returns the numpy.dtype which describes the data"""
