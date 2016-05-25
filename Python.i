@@ -93,6 +93,7 @@
             array view after deletion of this sitk::Image object. """
 
         def __del__(self):
+            self.MakeUnique()
             self._retrieveExportedNumPyarrayview()
 
         def _retrieveExportedNumPyarrayview(self):
@@ -793,6 +794,7 @@ def GetArrayFromImage(image, arrayview = False, writeable = False):
         arrayView.SetConvertedFlag(True)
       else:
         arrayView.setflags(write = writeable)
+
       image._addExportedNumPyArrayView(arrayView)
       return arrayView
 

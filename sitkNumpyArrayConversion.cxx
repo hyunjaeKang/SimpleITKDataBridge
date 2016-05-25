@@ -23,28 +23,9 @@
 #include "sitkImage.h"
 #include "sitkConditional.h"
 #include "sitkExceptionObject.h"
-#include "itkImage.h"
-#include "itkVectorImage.h"
 
 namespace sitk = itk::simple;
 
-template<typename TPixel, unsigned int VImageDimension = 2>
-const void*
-sitkExportScalarImageBuffer(sitk::Image * sitkImage)
-{
-  typedef itk::Image<TPixel, VImageDimension>  ImageType;
-  typename ImageType::Pointer itkImage = (ImageType*)(sitkImage->GetITKBase());
-  return itkImage->GetPixelContainer()->GetBufferPointer();
-}
-
-template<typename TPixel, unsigned int VImageDimension = 2>
-const void*
-sitkExportVectorImageBuffer(sitk::Image * sitkImage)
-{
-  typedef itk::VectorImage<TPixel, VImageDimension>  ImageType;
-  typename ImageType::Pointer itkImage = (ImageType*)(sitkImage->GetITKBase());
-  return itkImage->GetPixelContainer()->GetBufferPointer();
-}
 // Python is written in C
 #ifdef __cplusplus
 extern "C"
@@ -79,6 +60,7 @@ sitk_GetByteArrayFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
   Py_buffer                   pyBuffer;
   memset(&pyBuffer, 0, sizeof(Py_buffer));
 
+
   if( !PyArg_ParseTuple( args, "Oi", &pyImage, &arrayViewFlag ) )
     {
     SWIG_fail; // SWIG_fail is a macro that says goto: fail (return NULL)
@@ -89,8 +71,6 @@ sitk_GetByteArrayFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
     SWIG_exception_fail(SWIG_ArgError(res), "in method 'GetByteArrayFromImage', argument needs to be of type 'sitk::Image *'");
     }
   sitkImage = reinterpret_cast< sitk::Image * >( voidImage );
-  sitkImage->MakeUnique();
-
   dimension = sitkImage->GetDimension();
   size      = sitkImage->GetSize();
 
@@ -101,323 +81,53 @@ sitk_GetByteArrayFromImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
     SWIG_fail;
     break;
   case sitk::ConditionalValue< sitk::sitkVectorUInt8 != sitk::sitkUnknown, sitk::sitkVectorUInt8, -14 >::Value:
-    if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<uint8_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<uint8_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
-    pixelSize  = sizeof( uint8_t );
-    break;
   case sitk::ConditionalValue< sitk::sitkUInt8 != sitk::sitkUnknown, sitk::sitkUInt8, -2 >::Value:
-    if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<uint8_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<uint8_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
+    sitkBufferPtr = (const void *)sitkImage->GetBufferAsUInt8();
     pixelSize  = sizeof( uint8_t );
     break;
   case sitk::ConditionalValue< sitk::sitkVectorInt8 != sitk::sitkUnknown, sitk::sitkVectorInt8, -15 >::Value:
-      if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<int8_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<int8_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
-    pixelSize  = sizeof( int8_t );
-    break;
   case sitk::ConditionalValue< sitk::sitkInt8 != sitk::sitkUnknown, sitk::sitkInt8, -3 >::Value:
-    if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<int8_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<int8_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
+    sitkBufferPtr = (const void *)sitkImage->GetBufferAsInt8();
     pixelSize  = sizeof( int8_t );
     break;
   case sitk::ConditionalValue< sitk::sitkVectorUInt16 != sitk::sitkUnknown, sitk::sitkVectorUInt16, -16 >::Value:
-      if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<uint16_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<uint16_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
-    pixelSize  = sizeof( uint16_t );
-    break;
   case sitk::ConditionalValue< sitk::sitkUInt16 != sitk::sitkUnknown, sitk::sitkUInt16, -4 >::Value:
-    if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<uint16_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<uint16_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
+    sitkBufferPtr = (const void *)sitkImage->GetBufferAsUInt16();
     pixelSize  = sizeof( uint16_t );
     break;
   case sitk::ConditionalValue< sitk::sitkVectorInt16 != sitk::sitkUnknown, sitk::sitkVectorInt16, -17 >::Value:
-      if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<int16_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<int16_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
-    pixelSize  = sizeof( int16_t );
-    break;
   case sitk::ConditionalValue< sitk::sitkInt16 != sitk::sitkUnknown, sitk::sitkInt16, -5 >::Value:
-    if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<int16_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<int16_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
+    sitkBufferPtr = (const void *)sitkImage->GetBufferAsInt16();
     pixelSize  = sizeof( int16_t );
     break;
   case sitk::ConditionalValue< sitk::sitkVectorUInt32 != sitk::sitkUnknown, sitk::sitkVectorUInt32, -18 >::Value:
-      if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<uint32_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<uint32_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
-    pixelSize  = sizeof( uint32_t );
-    break;
   case sitk::ConditionalValue< sitk::sitkUInt32 != sitk::sitkUnknown, sitk::sitkUInt32, -6 >::Value:
-    if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<uint32_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<uint32_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
+    sitkBufferPtr = (const void *)sitkImage->GetBufferAsUInt32();
     pixelSize  = sizeof( uint32_t );
     break;
   case sitk::ConditionalValue< sitk::sitkVectorInt32 != sitk::sitkUnknown, sitk::sitkVectorInt32, -19 >::Value:
-      if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<int32_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<int32_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
-    pixelSize  = sizeof( int32_t );
-    break;
   case sitk::ConditionalValue< sitk::sitkInt32 != sitk::sitkUnknown, sitk::sitkInt32, -7 >::Value:
-    if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<int32_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<int32_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
+    sitkBufferPtr = (const void *)sitkImage->GetBufferAsInt32();
     pixelSize  = sizeof( int32_t );
     break;
   case sitk::ConditionalValue< sitk::sitkVectorUInt64 != sitk::sitkUnknown, sitk::sitkVectorUInt64, -20 >::Value:
-      if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<uint64_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<uint64_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
-    pixelSize  = sizeof( uint64_t );
-    break;
   case sitk::ConditionalValue< sitk::sitkUInt64 != sitk::sitkUnknown, sitk::sitkUInt64, -8 >::Value:
-    if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<uint64_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<uint64_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
+    sitkBufferPtr = (const void *)sitkImage->GetBufferAsUInt64();
     pixelSize  = sizeof( uint64_t );
     break;
   case sitk::ConditionalValue< sitk::sitkVectorInt64 != sitk::sitkUnknown, sitk::sitkVectorInt64, -21 >::Value:
-      if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<int64_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<int64_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
-    pixelSize  = sizeof( int64_t );
-    break;
   case sitk::ConditionalValue< sitk::sitkInt64 != sitk::sitkUnknown, sitk::sitkInt64, -9 >::Value:
-     if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<int64_t, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<int64_t, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
-    pixelSize  = sizeof( int64_t );
-    break;
+     sitkBufferPtr = (const void *)sitkImage->GetBufferAsInt64();
+     pixelSize  = sizeof( int64_t );
+     break;
   case sitk::ConditionalValue< sitk::sitkVectorFloat32 != sitk::sitkUnknown, sitk::sitkVectorFloat32, -22 >::Value:
-      if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<float, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<float, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
-    pixelSize  = sizeof( float );
-    break;
   case sitk::ConditionalValue< sitk::sitkFloat32 != sitk::sitkUnknown, sitk::sitkFloat32, -10 >::Value:
-    if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<float, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<float, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
+    sitkBufferPtr = (const void *)sitkImage->GetBufferAsFloat();
     pixelSize  = sizeof( float );
     break;
   case sitk::ConditionalValue< sitk::sitkVectorFloat64 != sitk::sitkUnknown, sitk::sitkVectorFloat64, -23 >::Value:
-      if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<double, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportVectorImageBuffer<double, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
-    pixelSize  = sizeof( double );
-    break;
   case sitk::ConditionalValue< sitk::sitkFloat64 != sitk::sitkUnknown, sitk::sitkFloat64, -11 >::Value:
-    if(dimension == 2)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<double, 2>(sitkImage);
-      }
-    else if (dimension == 3)
-      {
-      sitkBufferPtr = sitkExportScalarImageBuffer<double, 3>(sitkImage);
-      }
-    else
-      {
-      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
-      goto fail;
-      }
+    sitkBufferPtr = (const void *)sitkImage->GetBufferAsDouble(); // \todo rename to Float64 for consistency
     pixelSize  = sizeof( double );
     break;
   case sitk::ConditionalValue< sitk::sitkComplexFloat32 != sitk::sitkUnknown, sitk::sitkComplexFloat32, -12 >::Value:
@@ -532,14 +242,15 @@ sitk_SetImageFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
     {
     buffer_len = pyBuffer.len;
     buffer     = pyBuffer.buf;
-    shapeseq   = PySequence_Fast(obj, "expected sequence");
-    dimension  = PySequence_Size(obj);
+    }
 
-    for(unsigned int i=0 ; i< dimension; ++i)
-      {
-      item = PySequence_Fast_GET_ITEM(shapeseq,i);
-      size.push_back((unsigned int)PyInt_AsLong(item));
-      }
+  shapeseq   = PySequence_Fast(obj, "expected sequence");
+  dimension  = PySequence_Size(obj);
+
+  for(unsigned int i=0 ; i< dimension; ++i)
+    {
+    item = PySequence_Fast_GET_ITEM(shapeseq,i);
+    size.push_back((unsigned int)PyInt_AsLong(item));
     }
 
   if (dimension == 2 )
