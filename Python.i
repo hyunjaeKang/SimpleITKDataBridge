@@ -92,9 +92,28 @@
             This operation is for keeping all element values of exported NumPy
             array view after deletion of this sitk::Image object. """
 
+        def __init__(self, *args):
+
+            """
+            __init__(itk::simple::Image self) -> Image
+            __init__(itk::simple::Image self, Image img) -> Image
+            __init__(itk::simple::Image self, unsigned int width, unsigned int height, itk::simple::PixelIDValueEnum valueEnum) -> Image
+            __init__(itk::simple::Image self, unsigned int width, unsigned int height, unsigned int depth, itk::simple::PixelIDValueEnum valueEnum) -> Image
+            __init__(itk::simple::Image self, VectorUInt32 size, itk::simple::PixelIDValueEnum valueEnum, unsigned int numberOfComponents=0) -> Image
+            """
+
+            if type(args[0]) is Image:
+                self.this = args[0]
+            else:
+                this = _SimpleITK.new_Image(*args)
+                try:
+                    self.this.append(this)
+                except Exception:
+                    self.this = this
+
         def __del__(self):
-            self.MakeUnique()
             self._retrieveExportedNumPyarrayview()
+
 
         def _retrieveExportedNumPyarrayview(self):
             try:
