@@ -92,28 +92,8 @@
             This operation is for keeping all element values of exported NumPy
             array view after deletion of this sitk::Image object. """
 
-        def __init__(self, *args):
-
-            """
-            __init__(itk::simple::Image self) -> Image
-            __init__(itk::simple::Image self, Image img) -> Image
-            __init__(itk::simple::Image self, unsigned int width, unsigned int height, itk::simple::PixelIDValueEnum valueEnum) -> Image
-            __init__(itk::simple::Image self, unsigned int width, unsigned int height, unsigned int depth, itk::simple::PixelIDValueEnum valueEnum) -> Image
-            __init__(itk::simple::Image self, VectorUInt32 size, itk::simple::PixelIDValueEnum valueEnum, unsigned int numberOfComponents=0) -> Image
-            """
-
-            if type(args[0]) is Image:
-                self.this = args[0]
-            else:
-                this = _SimpleITK.new_Image(*args)
-                try:
-                    self.this.append(this)
-                except Exception:
-                    self.this = this
-
         def __del__(self):
             self._retrieveExportedNumPyarrayview()
-
 
         def _retrieveExportedNumPyarrayview(self):
             try:
@@ -124,10 +104,12 @@
                             try:
                                 Tempnumpyarray
                             except:
-                                Tempnumpyarray = GetArrayFromImage(self, arrayview = False)
+                                Tempnumpyarray = numpy.array(nparr, copy = True)
                             bwritable  = nparr.flags.writeable
                             nparr.data = Tempnumpyarray.data
                             nparr.setflags(write = bwritable)
+                            nparr.bConverted = False
+                    _SimpleITK._SetRefenceCountImage(self, int(False))
             except:
                 pass
 
@@ -656,6 +638,7 @@
 // Numpy array conversion support
 %native(_GetByteArrayFromImage) PyObject *sitk_GetByteArrayFromImage( PyObject *self, PyObject *args );
 %native(_SetImageFromArray) PyObject *sitk_SetImageFromArray( PyObject *self, PyObject *args );
+%native(_SetRefenceCountImage) PyObject *sitk_SetRefenceCountImage( PyObject *self, PyObject *args );
 
 %pythoncode %{
 
@@ -808,6 +791,7 @@ def GetArrayFromImage(image, arrayview = False, writeable = False):
       return arr
     else:
       imageMemoryView = _SimpleITK._GetByteArrayFromImage(image, int(arrayview))
+      _SimpleITK._SetRefenceCountImage(image, int(True))
       arrayView = numpy.asarray(imageMemoryView).view(dtype = dtype).reshape(shape[::-1]).view(sitkndarray)
       if writeable == True:
         arrayView.SetConvertedFlag(True)

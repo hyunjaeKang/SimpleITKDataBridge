@@ -23,8 +23,50 @@
 #include "sitkImage.h"
 #include "sitkConditional.h"
 #include "sitkExceptionObject.h"
+#include "itkImage.h"
+#include "itkVectorImage.h"
 
 namespace sitk = itk::simple;
+
+template<typename TPixel, unsigned int VImageDimension = 2>
+const void
+sitkSetReferenceCountOfScalarImage(sitk::Image * sitkImage,
+                                   bool bIncreaseRefCnt = true)
+{
+  typedef itk::Image<TPixel, VImageDimension>  ImageType;
+  typename ImageType::Pointer itkImage = (ImageType*)(sitkImage->GetITKBase());
+  if(bIncreaseRefCnt)
+    {
+    itkImage->GetPixelContainer()->Register();
+    }
+  else
+    {
+    if(itkImage->GetPixelContainer()->GetReferenceCount() > 1)
+      {
+      itkImage->GetPixelContainer()->UnRegister();
+      }
+    }
+}
+
+template<typename TPixel, unsigned int VImageDimension = 2>
+const void*
+sitkSetReferenceCountOfVectorImage(sitk::Image * sitkImage,
+                                   bool bIncreaseRefCnt = true)
+{
+  typedef itk::VectorImage<TPixel, VImageDimension>  ImageType;
+  typename ImageType::Pointer itkImage = (ImageType*)(sitkImage->GetITKBase());
+   if(bIncreaseRefCnt)
+    {
+    itkImage->GetPixelContainer()->Register();
+    }
+  else
+    {
+    if(itkImage->GetPixelContainer()->GetReferenceCount() > 1)
+      {
+      itkImage->GetPixelContainer()->UnRegister();
+      }
+    }
+}
 
 // Python is written in C
 #ifdef __cplusplus
@@ -456,6 +498,399 @@ sitk_SetImageFromArray( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
 fail:
   PyBuffer_Release( &pyBuffer );
   return NULL;
+}
+
+/** An internal function that performs a deep copy of the image buffer
+ * into a python byte array. The byte array can later be converted
+ * into a numpy array with the from buffer method.
+ */
+static PyObject *
+sitk_SetRefenceCountImage( PyObject *SWIGUNUSEDPARM(self), PyObject *args )
+{
+  const void *                sitkBufferPtr;
+
+  size_t                      pixelSize     = 1;
+
+  unsigned int                dimension;
+
+  /* Cast over to a sitk Image. */
+  PyObject *                  pyImage;
+  void *                      voidImage;
+  sitk::Image *               sitkImage;
+  int                         res           = 0;
+  int                         arrayViewFlag = 0;
+
+
+  bool                        bIncreaseRefCntOfitkImage = true;
+
+  if( !PyArg_ParseTuple( args, "Oi", &pyImage, &arrayViewFlag ) )
+    {
+    SWIG_fail; // SWIG_fail is a macro that says goto: fail (return NULL)
+    }
+  res = SWIG_ConvertPtr( pyImage, &voidImage, SWIGTYPE_p_itk__simple__Image, 0 );
+  if( !SWIG_IsOK( res ) )
+    {
+    SWIG_exception_fail(SWIG_ArgError(res), "in method 'GetByteArrayFromImage', argument needs to be of type 'sitk::Image *'");
+    }
+  sitkImage = reinterpret_cast< sitk::Image * >( voidImage );
+
+  dimension = sitkImage->GetDimension();
+
+  if(arrayViewFlag == 0)
+    {
+    bIncreaseRefCntOfitkImage = false;
+    }
+  else if (arrayViewFlag == 1)
+    {
+    bIncreaseRefCntOfitkImage = true;
+    }
+  else
+    {
+    PyErr_SetString( PyExc_RuntimeError, "Wrong conversion operation." );
+    SWIG_fail;
+    }
+
+  switch( sitkImage->GetPixelIDValue() )
+    {
+  case sitk::sitkUnknown:
+    PyErr_SetString( PyExc_RuntimeError, "Unknown pixel type." );
+    SWIG_fail;
+    break;
+  case sitk::ConditionalValue< sitk::sitkVectorUInt8 != sitk::sitkUnknown, sitk::sitkVectorUInt8, -14 >::Value:
+    if(dimension == 2)
+      {
+      sitkSetReferenceCountOfVectorImage<uint8_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfVectorImage<uint8_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( uint8_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkUInt8 != sitk::sitkUnknown, sitk::sitkUInt8, -2 >::Value:
+    if(dimension == 2)
+      {
+      sitkSetReferenceCountOfScalarImage<uint8_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfScalarImage<uint8_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( uint8_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkVectorInt8 != sitk::sitkUnknown, sitk::sitkVectorInt8, -15 >::Value:
+      if(dimension == 2)
+      {
+       sitkSetReferenceCountOfVectorImage<int8_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfVectorImage<int8_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( int8_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkInt8 != sitk::sitkUnknown, sitk::sitkInt8, -3 >::Value:
+    if(dimension == 2)
+      {
+      sitkSetReferenceCountOfScalarImage<int8_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfScalarImage<int8_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( int8_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkVectorUInt16 != sitk::sitkUnknown, sitk::sitkVectorUInt16, -16 >::Value:
+      if(dimension == 2)
+      {
+      sitkSetReferenceCountOfVectorImage<uint16_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfVectorImage<uint16_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( uint16_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkUInt16 != sitk::sitkUnknown, sitk::sitkUInt16, -4 >::Value:
+    if(dimension == 2)
+      {
+      sitkSetReferenceCountOfScalarImage<uint16_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfScalarImage<uint16_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( uint16_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkVectorInt16 != sitk::sitkUnknown, sitk::sitkVectorInt16, -17 >::Value:
+      if(dimension == 2)
+      {
+      sitkSetReferenceCountOfVectorImage<int16_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfVectorImage<int16_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( int16_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkInt16 != sitk::sitkUnknown, sitk::sitkInt16, -5 >::Value:
+    if(dimension == 2)
+      {
+      sitkSetReferenceCountOfScalarImage<int16_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfScalarImage<int16_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( int16_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkVectorUInt32 != sitk::sitkUnknown, sitk::sitkVectorUInt32, -18 >::Value:
+      if(dimension == 2)
+      {
+      sitkSetReferenceCountOfVectorImage<uint32_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfVectorImage<uint32_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( uint32_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkUInt32 != sitk::sitkUnknown, sitk::sitkUInt32, -6 >::Value:
+    if(dimension == 2)
+      {
+      sitkSetReferenceCountOfScalarImage<uint32_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfScalarImage<uint32_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( uint32_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkVectorInt32 != sitk::sitkUnknown, sitk::sitkVectorInt32, -19 >::Value:
+      if(dimension == 2)
+      {
+      sitkSetReferenceCountOfVectorImage<int32_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfVectorImage<int32_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( int32_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkInt32 != sitk::sitkUnknown, sitk::sitkInt32, -7 >::Value:
+    if(dimension == 2)
+      {
+      sitkSetReferenceCountOfScalarImage<int32_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfScalarImage<int32_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( int32_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkVectorUInt64 != sitk::sitkUnknown, sitk::sitkVectorUInt64, -20 >::Value:
+      if(dimension == 2)
+      {
+      sitkSetReferenceCountOfVectorImage<uint64_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfVectorImage<uint64_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( uint64_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkUInt64 != sitk::sitkUnknown, sitk::sitkUInt64, -8 >::Value:
+    if(dimension == 2)
+      {
+      sitkSetReferenceCountOfScalarImage<uint64_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfScalarImage<uint64_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( uint64_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkVectorInt64 != sitk::sitkUnknown, sitk::sitkVectorInt64, -21 >::Value:
+      if(dimension == 2)
+      {
+      sitkSetReferenceCountOfVectorImage<int64_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfVectorImage<int64_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( int64_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkInt64 != sitk::sitkUnknown, sitk::sitkInt64, -9 >::Value:
+     if(dimension == 2)
+      {
+      sitkSetReferenceCountOfScalarImage<int64_t, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfScalarImage<int64_t, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( int64_t );
+    break;
+  case sitk::ConditionalValue< sitk::sitkVectorFloat32 != sitk::sitkUnknown, sitk::sitkVectorFloat32, -22 >::Value:
+      if(dimension == 2)
+      {
+      sitkSetReferenceCountOfVectorImage<float, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfVectorImage<float, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( float );
+    break;
+  case sitk::ConditionalValue< sitk::sitkFloat32 != sitk::sitkUnknown, sitk::sitkFloat32, -10 >::Value:
+    if(dimension == 2)
+      {
+      sitkSetReferenceCountOfScalarImage<float, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfScalarImage<float, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( float );
+    break;
+  case sitk::ConditionalValue< sitk::sitkVectorFloat64 != sitk::sitkUnknown, sitk::sitkVectorFloat64, -23 >::Value:
+      if(dimension == 2)
+      {
+      sitkSetReferenceCountOfVectorImage<double, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfVectorImage<double, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( double );
+    break;
+  case sitk::ConditionalValue< sitk::sitkFloat64 != sitk::sitkUnknown, sitk::sitkFloat64, -11 >::Value:
+    if(dimension == 2)
+      {
+      sitkSetReferenceCountOfScalarImage<double, 2>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else if (dimension == 3)
+      {
+      sitkSetReferenceCountOfScalarImage<double, 3>(sitkImage, bIncreaseRefCntOfitkImage);
+      }
+    else
+      {
+      PyErr_SetString( PyExc_RuntimeError, "Unknown image dimension." );
+      goto fail;
+      }
+    pixelSize  = sizeof( double );
+    break;
+  case sitk::ConditionalValue< sitk::sitkComplexFloat32 != sitk::sitkUnknown, sitk::sitkComplexFloat32, -12 >::Value:
+  case sitk::ConditionalValue< sitk::sitkComplexFloat64 != sitk::sitkUnknown, sitk::sitkComplexFloat64, -13 >::Value:
+    PyErr_SetString( PyExc_RuntimeError, "Images of Complex Pixel types currently are not supported." );
+    SWIG_fail;
+    break;
+  default:
+    PyErr_SetString( PyExc_RuntimeError, "Unknown pixel type." );
+    SWIG_fail;
+    }
+
+  Py_RETURN_NONE;
+
+fail:
+  return NULL;
+
 }
 
 #ifdef __cplusplus
